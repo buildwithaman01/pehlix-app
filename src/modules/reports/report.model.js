@@ -39,7 +39,7 @@ const reportSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'generating', 'generated', 'delivered', 'failed'],
+    enum: ['pending', 'approved', 'generating', 'generated', 'delivered', 'failed'],
     default: 'pending'
   },
   deliveryChannel: {

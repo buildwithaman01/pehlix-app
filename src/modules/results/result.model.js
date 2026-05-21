@@ -84,6 +84,21 @@ const resultSchema = new mongoose.Schema({
   approvedAt: {
     type: Date
   },
+  isRejected: {
+    type: Boolean,
+    default: false
+  },
+  rejectedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  rejectedAt: {
+    type: Date
+  },
+  rejectionNote: {
+    type: String,
+    trim: true
+  },
   isDeleted: {
     type: Boolean,
     default: false

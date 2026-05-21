@@ -1,5 +1,50 @@
 import mongoose from 'mongoose';
 
+const testParameterSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  unit: {
+    type: String,
+    trim: true
+  },
+  normalLow: {
+    type: Number
+  },
+  normalHigh: {
+    type: Number
+  },
+  criticalLow: {
+    type: Number
+  },
+  criticalHigh: {
+    type: Number
+  },
+  isDerived: {
+    type: Boolean,
+    default: false
+  }
+}, { _id: false });
+
+const derivedFormulaSchema = new mongoose.Schema({
+  targetParameter: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  formula: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  inputs: [{
+    type: String,
+    trim: true
+  }]
+}, { _id: false });
+
 const testMasterSchema = new mongoose.Schema({
   code: {
     type: String,
@@ -30,6 +75,8 @@ const testMasterSchema = new mongoose.Schema({
     required: true,
     default: 0
   },
+  parameters: [testParameterSchema],
+  derivedFormulas: [derivedFormulaSchema],
   isActive: {
     type: Boolean,
     default: true

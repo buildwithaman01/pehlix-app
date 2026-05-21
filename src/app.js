@@ -42,8 +42,10 @@ app.use('/api/auth', authRouter);
 // Import and mount all module routers under /api prefix (commented out until created)
 import patientRouter from './modules/patients/patient.routes.js';
 import visitRouter from './modules/visits/visit.routes.js';
-// import resultRouter from './modules/results/result.routes.js';
-// import reportRouter from './modules/reports/report.routes.js';
+import resultRouter from './modules/results/result.routes.js';
+import reportRouter from './modules/reports/report.routes.js';
+import alertRouter from './modules/results/alert.routes.js';
+import sampleRouter from './modules/samples/sample.routes.js';
 // import billingRouter from './modules/billing/billing.routes.js';
 // import inventoryRouter from './modules/inventory/inventory.routes.js';
 // import doctorRouter from './modules/doctors/doctor.routes.js';
@@ -52,13 +54,14 @@ import visitRouter from './modules/visits/visit.routes.js';
 // import webhookRouter from './modules/webhooks/webhook.routes.js';
 // import analyticsRouter from './modules/analytics/analytics.routes.js';
 // import homeCollectionRouter from './modules/homeCollections/homeCollection.routes.js';
-// import sampleRouter from './modules/samples/sample.routes.js';
 
 // Route mountings under /api
 app.use('/api/patients', patientRouter);
 app.use('/api/visits', visitRouter);
-// app.use('/api/results', resultRouter);
-// app.use('/api/reports', reportRouter);
+app.use('/api/results', resultRouter);
+app.use('/api/reports', reportRouter);
+app.use('/api/critical', alertRouter);
+app.use('/api/samples', sampleRouter);
 // app.use('/api/billing', billingRouter);
 // app.use('/api/inventory', inventoryRouter);
 // app.use('/api/doctors', doctorRouter);
@@ -67,7 +70,6 @@ app.use('/api/visits', visitRouter);
 // app.use('/api/webhooks', webhookRouter);
 // app.use('/api/analytics', analyticsRouter);
 // app.use('/api/home-collections', homeCollectionRouter);
-// app.use('/api/samples', sampleRouter);
 
 export default app;
 export { app };
