@@ -57,6 +57,18 @@ const visitSchema = new mongoose.Schema({
   },
   expectedReportTime: {
     type: Date
+  },
+  scheduledDate: {
+    type: Date
+  },
+  statusTimestamps: {
+    registeredAt: { type: Date, default: Date.now },
+    sampleCollectedAt: { type: Date },
+    processingAt: { type: Date },
+    resultsEnteredAt: { type: Date },
+    approvedAt: { type: Date },
+    reportedAt: { type: Date },
+    deliveredAt: { type: Date }
   }
 }, {
   timestamps: true

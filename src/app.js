@@ -40,8 +40,8 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRouter);
 
 // Import and mount all module routers under /api prefix (commented out until created)
-// import patientRouter from './modules/patients/patient.routes.js';
-// import visitRouter from './modules/visits/visit.routes.js';
+import patientRouter from './modules/patients/patient.routes.js';
+import visitRouter from './modules/visits/visit.routes.js';
 // import resultRouter from './modules/results/result.routes.js';
 // import reportRouter from './modules/reports/report.routes.js';
 // import billingRouter from './modules/billing/billing.routes.js';
@@ -55,8 +55,8 @@ app.use('/api/auth', authRouter);
 // import sampleRouter from './modules/samples/sample.routes.js';
 
 // Route mountings under /api
-// app.use('/api/patients', patientRouter);
-// app.use('/api/visits', visitRouter);
+app.use('/api/patients', patientRouter);
+app.use('/api/visits', visitRouter);
 // app.use('/api/results', resultRouter);
 // app.use('/api/reports', reportRouter);
 // app.use('/api/billing', billingRouter);
