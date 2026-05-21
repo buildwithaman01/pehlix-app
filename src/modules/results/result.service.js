@@ -1,9 +1,15 @@
+import mongoose from 'mongoose';
+import { v4 as uuidv4 } from 'uuid';
+import Razorpay from 'razorpay';
+import { config } from '../../config/index.js';
 import Result from './result.model.js';
 import Visit from '../visits/visit.model.js';
 import TestMaster from '../staff/testMaster.model.js';
 import Report from '../reports/report.model.js';
 import VisitService from '../visits/visit.service.js';
+import Invoice from '../billing/invoice.model.js';
 import qstashService from '../../utils/qstash.js';
+import SmsService from '../../utils/sms.js';
 import { AppError } from '../../utils/errors.js';
 
 export const ResultService = {
@@ -221,6 +227,7 @@ export const ResultService = {
     await result.save();
 
     const doctorPhone = visit.referredBy ? visit.referredBy.phone : null;
+    const doctorName = visit.referredBy ? visit.referredBy.name : 'Doctor';
     const patientName = visit.patientId ? `${visit.patientId.firstName} ${visit.patientId.lastName || ''}`.trim() : 'Patient';
     const testName = result.testId ? result.testId.name : 'Diagnostic Test';
 
@@ -236,17 +243,27 @@ export const ResultService = {
       return match ? `${match.normalLow || 0} - ${match.normalHigh || 0}` : 'N/A';
     }).join(', ');
 
+    // Fetch lab details
+    const lab = await mongoose.model('Lab').findById(labId);
+    const labName = lab?.name || 'Pehlix Diagnostic Lab';
+    const labPhone = lab?.phone || '9999999999';
+
+    // Generate unique alertId for confirmation
+    const alertId = uuidv4();
+    const acknowledgeLink = `${config.NEXT_PUBLIC_APP_URL}/api/critical/acknowledge/${alertId}?resultId=${result._id}`;
+
     // Alert payload
     const alertPayload = {
-      type: 'critical_value_alert',
-      doctorPhone,
+      doctorName,
       patientName,
       testName,
       value,
       unit,
       normalRange,
-      labName: 'Pehlix Diagnostic Lab',
-      labPhone: '9999999999'
+      labName,
+      labPhone,
+      acknowledgeLink,
+      labId: labId.toString()
     };
 
     // Log the alert payload to console as requested
@@ -254,14 +271,26 @@ export const ResultService = {
     console.log(JSON.stringify(alertPayload, null, 2));
     console.log('---------------------------------');
 
-    // Create a QStash escalation job placeholder
-    console.log('ESCALATION JOB WOULD BE QUEUED HERE — 15 minute acknowledgement check');
-    await qstashService.enqueueJob({
-      jobType: 'critical_acknowledgement_check',
-      resultId: result._id.toString(),
-      visitId: visit._id.toString(),
-      delayMinutes: 15
-    });
+    // Send WhatsApp and simultaneous SMS if doctor phone exists
+    if (doctorPhone) {
+      await qstashService.enqueueNotification('critical_value_alert', alertPayload, doctorPhone);
+
+      const smsMessage = `URGENT: Dr ${doctorName}, patient ${patientName} has a critical value. ${testName}: ${value} ${unit}. Normal range: ${normalRange}. Please contact patient immediately. Lab: ${labName} ${labPhone}. Acknowledge: ${acknowledgeLink}`;
+      await SmsService.send(doctorPhone, smsMessage);
+    }
+
+    // Create a QStash escalation job for 15-minute acknowledgement check (900 seconds)
+    const checkEndpoint = `${config.NEXT_PUBLIC_APP_URL}/api/internal/critical-acknowledgement-check`;
+    await qstashService.enqueue(
+      checkEndpoint,
+      {
+        resultId: result._id.toString(),
+        visitId: visit._id.toString(),
+        labId: labId.toString(),
+        alertId
+      },
+      900
+    );
 
     return {
       alertSent: true,
@@ -303,7 +332,7 @@ export const ResultService = {
   },
 
   /**
-   * Pathologist approves a result, updates report details, triggers PDF generation.
+   * Pathologist approves a result, updates report details, triggers PDF generation and WhatsApp paywall flows.
    */
   async approveResult(labId, resultId, pathologistId, pathologistNote) {
     const result = await Result.findOne({ _id: resultId, labId });
@@ -337,19 +366,116 @@ export const ResultService = {
 
     if (pendingApprovalCount === 0) {
       await VisitService.updateVisitStatus(labId, result.visitId, 'approved');
+
+      // Check invoice balance
+      const invoice = await Invoice.findOne({ visitId: result.visitId, labId }).populate('patientId');
+      if (invoice) {
+        const balance = invoice.balanceAmount !== undefined ? invoice.balanceAmount : (invoice.totalAmount - invoice.amountPaid);
+        
+        // Fetch lab details to get name & keys
+        const lab = await mongoose.model('Lab').findById(labId);
+        const labName = lab?.name || 'Pehlix Lab';
+        
+        const patientName = invoice.patientId 
+          ? `${invoice.patientId.firstName} ${invoice.patientId.lastName || ''}`.trim() 
+          : 'Patient';
+        const phone = invoice.patientId?.phone;
+
+        if (balance > 0) {
+          // Generate Razorpay payment link using lab credentials
+          let paymentLink = invoice.razorpayPaymentLinkUrl;
+          
+          if (!paymentLink) {
+            if (lab && lab.razorpayKeyId && lab.razorpayKeySecret) {
+              try {
+                const rpay = new Razorpay({
+                  key_id: lab.razorpayKeyId,
+                  key_secret: lab.razorpayKeySecret
+                });
+                
+                const formattedPhone = phone 
+                  ? (phone.startsWith('+') ? phone : `+91${phone}`) 
+                  : '9999999999';
+
+                // Create payment link
+                const link = await rpay.paymentLink.create({
+                  amount: Math.round(balance * 100), // in paise
+                  currency: 'INR',
+                  accept_partial: false,
+                  description: `Payment for Lab Invoice #${invoice.invoiceCode}`,
+                  customer: {
+                    name: patientName,
+                    contact: formattedPhone
+                  },
+                  notify: {
+                    sms: false,
+                    email: false
+                  },
+                  reminder_enable: false,
+                  notes: {
+                    invoiceId: invoice._id.toString()
+                  },
+                  callback_url: `${config.NEXT_PUBLIC_APP_URL}/billing/callback`,
+                  callback_method: 'get'
+                });
+                
+                paymentLink = link.short_url;
+                invoice.razorpayPaymentLinkId = link.id;
+                invoice.razorpayPaymentLinkUrl = paymentLink;
+                await invoice.save();
+              } catch (err) {
+                console.error('[approveResult] Failed to generate Razorpay link:', err);
+                paymentLink = `${config.NEXT_PUBLIC_APP_URL}/pay/${invoice._id}`;
+              }
+            } else {
+              paymentLink = `${config.NEXT_PUBLIC_APP_URL}/pay/${invoice._id}`;
+            }
+          }
+          
+          // Send report_ready_unpaid template
+          if (phone) {
+            await qstashService.enqueueNotification(
+              'report_ready_unpaid',
+              {
+                patientName,
+                pendingAmount: balance,
+                paymentLink,
+                labName,
+                labId: labId.toString()
+              },
+              phone
+            );
+          }
+        } else {
+          // balance === 0 -> Paid
+          // Queue PDF generation job
+          const pdfEndpoint = `${config.NEXT_PUBLIC_APP_URL}/api/internal/reports/generate`;
+          await qstashService.enqueue(pdfEndpoint, {
+            visitId: result.visitId.toString(),
+            labId: labId.toString(),
+            invoiceId: invoice._id.toString()
+          });
+
+          // Send report_ready_paid template
+          const reportLink = `${config.NEXT_PUBLIC_APP_URL}/reports/view/${result.visitId}`;
+          const reportCode = report ? (report.reportCode || invoice.invoiceCode) : invoice.invoiceCode;
+
+          if (phone) {
+            await qstashService.enqueueNotification(
+              'report_ready_paid',
+              {
+                patientName,
+                reportLink,
+                labName,
+                reportCode,
+                labId: labId.toString()
+              },
+              phone
+            );
+          }
+        }
+      }
     }
-
-    // Log PDF generation job payload (placeholder for AGENT_08)
-    const pdfJob = {
-      type: 'generate_pdf',
-      visitId: result.visitId.toString(),
-      labId: labId.toString(),
-      reportId: report ? report._id.toString() : null
-    };
-
-    console.log('--- [PDF GENERATION JOB PAYLOAD] ---');
-    console.log(JSON.stringify(pdfJob, null, 2));
-    console.log('------------------------------------');
 
     return {
       approved: true,

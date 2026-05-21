@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+import { config } from '../../config/index.js';
 import SampleService from './sample.service.js';
 import qstashService from '../../utils/qstash.js';
 import { sendSuccess } from '../../utils/response.js';
@@ -49,21 +51,25 @@ export const SampleController = {
 
       const sample = await SampleService.rejectSample(labId, id, rejectionReason, userId);
 
-      // Queue QStash job placeholder (rejection alert WhatsApp template)
+      // Queue QStash job (rejection alert WhatsApp template)
       const patientPhone = sample.patientId ? sample.patientId.phone : null;
       const patientName = sample.patientId ? `${sample.patientId.firstName} ${sample.patientId.lastName || ''}`.trim() : 'Patient';
 
-      await qstashService.enqueueNotification({
-        type: 'sample_rejected',
-        templateName: 'sample_rejection_alert',
-        recipientPhone: patientPhone,
-        data: {
-          patientName,
-          rejectionReason: sample.rejectionReason,
-          visitCode: sample.visitId ? sample.visitId.visitCode : null,
-          labId: labId.toString()
-        }
-      });
+      const lab = await mongoose.model('Lab').findById(labId);
+      const labName = lab?.name || 'Pehlix Lab';
+      const rescheduleLink = `${config.NEXT_PUBLIC_APP_URL}/bookings/reschedule?visit=${sample.visitId ? (sample.visitId.visitCode || sample.visitId._id) : ''}`;
+
+      const variables = {
+        patientName,
+        rejectionReason: sample.rejectionReason,
+        labName,
+        rescheduleLink,
+        labId: labId.toString()
+      };
+
+      if (patientPhone) {
+        await qstashService.enqueueNotification('sample_rejected', variables, patientPhone);
+      }
 
       return sendSuccess(res, sample, 'Sample rejected successfully');
     } catch (error) {

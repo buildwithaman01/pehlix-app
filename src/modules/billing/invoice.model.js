@@ -106,11 +106,10 @@ const invoiceSchema = new mongoose.Schema({
 });
 
 // Middleware to calculate balance amount before save
-invoiceSchema.pre('save', function(next) {
+invoiceSchema.pre('save', function() {
   if (this.totalAmount !== undefined && this.amountPaid !== undefined) {
     this.balanceAmount = this.totalAmount - this.amountPaid;
   }
-  next();
 });
 
 const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', invoiceSchema);

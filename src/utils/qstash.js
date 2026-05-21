@@ -1,24 +1,65 @@
-export const qstashService = {
+import { Client } from '@upstash/qstash';
+import { config } from '../config/index.js';
+
+const qstashClient = new Client({
+  token: config.UPSTASH_QSTASH_TOKEN
+});
+
+export const QStashService = {
   /**
-   * Placeholder for QStash notification queueing.
-   * Logs details to console for now; full implementation in AGENT_09.
+   * Enqueues a job using Upstash QStash.
+   * @param {string} endpoint - The full destination URL.
+   * @param {object} payload - JSON payload.
+   * @param {number} [delaySeconds=0] - Delay in seconds before processing.
+   * @returns {Promise<string>} The messageId from QStash.
    */
-  async enqueueNotification(payload) {
-    console.log('--- [QStash enqueueNotification] ---');
-    console.log(JSON.stringify(payload, null, 2));
-    console.log('------------------------------------');
-    return { success: true, messageId: 'qstash_placeholder_id' };
+  async enqueue(endpoint, payload, delaySeconds = 0) {
+    const options = {
+      url: endpoint,
+      body: payload
+    };
+    if (delaySeconds > 0) {
+      options.delay = delaySeconds;
+    }
+    const res = await qstashClient.publishJSON(options);
+    return res.messageId;
   },
 
   /**
-   * Placeholder for QStash job queueing.
+   * Enqueues a notification job delivering to the internal endpoint.
+   * @param {string} templateName - Name of the WhatsApp template.
+   * @param {object} variables - Template parameters.
+   * @param {string} phone - Recipient phone number.
+   * @returns {Promise<string>} The messageId from QStash.
+   */
+  async enqueueNotification(templateName, variables, phone) {
+    const endpoint = `${config.NEXT_PUBLIC_APP_URL}/api/internal/notifications/send`;
+    const payload = {
+      templateName,
+      variables,
+      phone
+    };
+    return this.enqueue(endpoint, payload);
+  },
+
+  /**
+   * Alias/backward compatibility helper for existing code that passed a single object.
    */
   async enqueueJob(payload) {
-    console.log('--- [QStash enqueueJob] ---');
-    console.log(JSON.stringify(payload, null, 2));
-    console.log('---------------------------');
-    return { success: true, jobId: 'qstash_job_placeholder_id' };
+    const endpoint = `${config.NEXT_PUBLIC_APP_URL}/api/internal/payments/process`; // default internal worker url
+    return this.enqueue(endpoint, payload);
   }
 };
 
-export default qstashService;
+// Also support named export and destructured single payload signature
+export const enqueueNotification = async (firstArg, variables, phone) => {
+  if (typeof firstArg === 'object' && firstArg !== null) {
+    // Called as: enqueueNotification({ templateName, phone, variables })
+    const { templateName, phone: p, variables: vars } = firstArg;
+    return QStashService.enqueueNotification(templateName, vars, p);
+  }
+  // Called as: enqueueNotification(templateName, variables, phone)
+  return QStashService.enqueueNotification(firstArg, variables, phone);
+};
+
+export default QStashService;

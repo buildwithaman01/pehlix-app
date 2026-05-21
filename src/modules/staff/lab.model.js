@@ -125,6 +125,14 @@ const labSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  razorpayKeyId: {
+    type: String,
+    trim: true
+  },
+  razorpayKeySecret: {
+    type: String,
+    trim: true
+  },
   industryType: {
     type: String,
     default: 'diagnostic_lab',
