@@ -1,7 +1,10 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import mongoSanitize from 'express-mongo-sanitize';
 import { config } from './config/index.js';
+import authRouter from './modules/auth/auth.routes.js';
 
 const app = express();
 
@@ -21,6 +24,10 @@ app.use(cors({
   credentials: true
 }));
 
+// 5. cookieParser() and mongoSanitize()
+app.use(cookieParser());
+app.use(mongoSanitize());
+
 // Health check route
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -29,8 +36,10 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Mount auth router
+app.use('/api/auth', authRouter);
+
 // Import and mount all module routers under /api prefix (commented out until created)
-// import authRouter from './modules/auth/auth.routes.js';
 // import patientRouter from './modules/patients/patient.routes.js';
 // import visitRouter from './modules/visits/visit.routes.js';
 // import resultRouter from './modules/results/result.routes.js';
@@ -46,7 +55,6 @@ app.get('/health', (req, res) => {
 // import sampleRouter from './modules/samples/sample.routes.js';
 
 // Route mountings under /api
-// app.use('/api/auth', authRouter);
 // app.use('/api/patients', patientRouter);
 // app.use('/api/visits', visitRouter);
 // app.use('/api/results', resultRouter);
