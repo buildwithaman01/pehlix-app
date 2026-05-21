@@ -1,13 +1,13 @@
 import { connectDB } from './utils/db.js';
 import app from './app.js';
-import { config } from './config/index.js';
 
 async function startServer() {
   try {
+    // 1. Connect to DB
     await connectDB();
-    console.log('Database connection initialized');
     
-    const PORT = config.PORT || 3000;
+    // 2. Listen on process.env.PORT or 3000
+    const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });

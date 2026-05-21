@@ -9,14 +9,50 @@ export const PERMISSIONS = {
     'inventory',
     'doctors',
     'staff',
+    'notifications',
+    'webhooks',
     'analytics',
-    'settings'
+    'homeCollections',
+    'samples'
   ],
-  pathologist: ['patients', 'results', 'reports'],
-  technician: ['patients', 'results', 'samples'],
-  receptionist: ['patients', 'visits', 'billing', 'invoices', 'payments'],
-  doctor: ['patients', 'reports', 'commissions'],
-  patient: ['reports', 'payments', 'vault'],
-  phlebotomist: ['patients', 'collections', 'samples'],
-  collectionCenter: ['patients', 'visits', 'samples', 'reports', 'invoices']
+  pathologist: [
+    'results',
+    'reports',
+    'patients',
+    'notifications'
+  ],
+  technician: [
+    'results',
+    'samples',
+    'patients'
+  ],
+  receptionist: [
+    'patients',
+    'visits',
+    'billing'
+  ],
+  doctor: [
+    'reports',
+    'patients',
+    'doctors'
+  ],
+  patient: [
+    'reports',
+    'patients',
+    'billing'
+  ],
+  phlebotomist: [
+    'homeCollections',
+    'patients',
+    'samples'
+  ],
+  collectionCenter: [
+    'patients',
+    'visits',
+    'samples',
+    'reports',
+    'billing'
+  ]
 };
+
+export default PERMISSIONS;

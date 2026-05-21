@@ -5,25 +5,31 @@ import { config } from './config/index.js';
 
 const app = express();
 
-// Security and parser middleware
+// Standard middleware in the exact requested order:
+// 1. express.json()
+app.use(express.json());
+
+// 2. express.urlencoded()
+app.use(express.urlencoded({ extended: true }));
+
+// 3. helmet()
 app.use(helmet());
+
+// 4. cors() with origin from config
 app.use(cors({
   origin: config.NEXT_PUBLIC_APP_URL || '*',
   credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // Health check route
 app.get('/health', (req, res) => {
-  res.json({
+  res.status(200).json({
     status: 'ok',
     timestamp: new Date().toISOString()
   });
 });
 
-// API Module Routers (Mount Points)
-// TODO: Import routers once created
+// Import and mount all module routers under /api prefix (commented out until created)
 // import authRouter from './modules/auth/auth.routes.js';
 // import patientRouter from './modules/patients/patient.routes.js';
 // import visitRouter from './modules/visits/visit.routes.js';
@@ -39,7 +45,7 @@ app.get('/health', (req, res) => {
 // import homeCollectionRouter from './modules/homeCollections/homeCollection.routes.js';
 // import sampleRouter from './modules/samples/sample.routes.js';
 
-// Router mountings
+// Route mountings under /api
 // app.use('/api/auth', authRouter);
 // app.use('/api/patients', patientRouter);
 // app.use('/api/visits', visitRouter);
@@ -56,3 +62,4 @@ app.get('/health', (req, res) => {
 // app.use('/api/samples', sampleRouter);
 
 export default app;
+export { app };

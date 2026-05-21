@@ -1,46 +1,54 @@
 import dotenv from 'dotenv';
+
+// Load environment variables if they haven't been loaded yet
 dotenv.config();
 
 export const config = {
   NODE_ENV: process.env.NODE_ENV || 'development',
-  PORT: process.env.PORT || 3000,
+  PORT: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
+  
+  // Databases
   MONGODB_URI: process.env.MONGODB_URI,
   
-  // JWT Configuration
+  // Authentication & Security
   JWT_ACCESS_PRIVATE_KEY: process.env.JWT_ACCESS_PRIVATE_KEY,
   JWT_ACCESS_PUBLIC_KEY: process.env.JWT_ACCESS_PUBLIC_KEY,
   JWT_REFRESH_PRIVATE_KEY: process.env.JWT_REFRESH_PRIVATE_KEY,
   JWT_SUPER_ADMIN_SECRET: process.env.JWT_SUPER_ADMIN_SECRET,
+  SUPER_ADMIN_IP_WHITELIST: process.env.SUPER_ADMIN_IP_WHITELIST || '',
 
-  // Upstash Configuration
-  UPSTASH_REDIS_URL: process.env.UPSTASH_REDIS_URL,
-  UPSTASH_REDIS_TOKEN: process.env.UPSTASH_REDIS_TOKEN,
-  UPSTASH_QSTASH_URL: process.env.UPSTASH_QSTASH_URL,
-  UPSTASH_QSTASH_TOKEN: process.env.UPSTASH_QSTASH_TOKEN,
+  // Upstash Redis & QStash
+  UPSTASH_REDIS_URL: process.env.UPSTASH_REDIS_URL || process.env.UPSTASH_REDIS_REST_URL,
+  UPSTASH_REDIS_TOKEN: process.env.UPSTASH_REDIS_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
+  UPSTASH_QSTASH_URL: process.env.UPSTASH_QSTASH_URL || process.env.QSTASH_URL,
+  UPSTASH_QSTASH_TOKEN: process.env.UPSTASH_QSTASH_TOKEN || process.env.QSTASH_TOKEN,
+  QSTASH_CURRENT_SIGNING_KEY: process.env.QSTASH_CURRENT_SIGNING_KEY,
+  QSTASH_NEXT_SIGNING_KEY: process.env.QSTASH_NEXT_SIGNING_KEY,
 
-  // Cloudflare R2 Configuration
+  // Cloudflare R2
   CLOUDFLARE_R2_ACCOUNT_ID: process.env.CLOUDFLARE_R2_ACCOUNT_ID,
   CLOUDFLARE_R2_ACCESS_KEY_ID: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
   CLOUDFLARE_R2_SECRET_ACCESS_KEY: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
   CLOUDFLARE_R2_BUCKET_NAME: process.env.CLOUDFLARE_R2_BUCKET_NAME,
 
-  // WhatsApp Meta Cloud API Configuration
+  // Meta WhatsApp API
   META_WHATSAPP_PHONE_NUMBER_ID: process.env.META_WHATSAPP_PHONE_NUMBER_ID,
   META_WHATSAPP_ACCESS_TOKEN: process.env.META_WHATSAPP_ACCESS_TOKEN,
   META_WHATSAPP_VERIFY_TOKEN: process.env.META_WHATSAPP_VERIFY_TOKEN,
 
-  // SMS MSG91 Configuration
+  // MSG91 SMS API
   MSG91_AUTH_KEY: process.env.MSG91_AUTH_KEY,
   MSG91_SENDER_ID: process.env.MSG91_SENDER_ID,
 
-  // Razorpay Configuration
+  // Razorpay
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET,
 
-  // Other Secrets
+  // Secrets & App URL
   CRON_SECRET: process.env.CRON_SECRET,
   PDF_SERVICE_SECRET: process.env.PDF_SERVICE_SECRET,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-  SUPER_ADMIN_IP_WHITELIST: process.env.SUPER_ADMIN_IP_WHITELIST ? process.env.SUPER_ADMIN_IP_WHITELIST.split(',') : []
 };
+
+export default config;
