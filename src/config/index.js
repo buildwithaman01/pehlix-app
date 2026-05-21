@@ -1,0 +1,46 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
+export const config = {
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  PORT: process.env.PORT || 3000,
+  MONGODB_URI: process.env.MONGODB_URI,
+  
+  // JWT Configuration
+  JWT_ACCESS_PRIVATE_KEY: process.env.JWT_ACCESS_PRIVATE_KEY,
+  JWT_ACCESS_PUBLIC_KEY: process.env.JWT_ACCESS_PUBLIC_KEY,
+  JWT_REFRESH_PRIVATE_KEY: process.env.JWT_REFRESH_PRIVATE_KEY,
+  JWT_SUPER_ADMIN_SECRET: process.env.JWT_SUPER_ADMIN_SECRET,
+
+  // Upstash Configuration
+  UPSTASH_REDIS_URL: process.env.UPSTASH_REDIS_URL,
+  UPSTASH_REDIS_TOKEN: process.env.UPSTASH_REDIS_TOKEN,
+  UPSTASH_QSTASH_URL: process.env.UPSTASH_QSTASH_URL,
+  UPSTASH_QSTASH_TOKEN: process.env.UPSTASH_QSTASH_TOKEN,
+
+  // Cloudflare R2 Configuration
+  CLOUDFLARE_R2_ACCOUNT_ID: process.env.CLOUDFLARE_R2_ACCOUNT_ID,
+  CLOUDFLARE_R2_ACCESS_KEY_ID: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+  CLOUDFLARE_R2_SECRET_ACCESS_KEY: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+  CLOUDFLARE_R2_BUCKET_NAME: process.env.CLOUDFLARE_R2_BUCKET_NAME,
+
+  // WhatsApp Meta Cloud API Configuration
+  META_WHATSAPP_PHONE_NUMBER_ID: process.env.META_WHATSAPP_PHONE_NUMBER_ID,
+  META_WHATSAPP_ACCESS_TOKEN: process.env.META_WHATSAPP_ACCESS_TOKEN,
+  META_WHATSAPP_VERIFY_TOKEN: process.env.META_WHATSAPP_VERIFY_TOKEN,
+
+  // SMS MSG91 Configuration
+  MSG91_AUTH_KEY: process.env.MSG91_AUTH_KEY,
+  MSG91_SENDER_ID: process.env.MSG91_SENDER_ID,
+
+  // Razorpay Configuration
+  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
+  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
+  RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET,
+
+  // Other Secrets
+  CRON_SECRET: process.env.CRON_SECRET,
+  PDF_SERVICE_SECRET: process.env.PDF_SERVICE_SECRET,
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  SUPER_ADMIN_IP_WHITELIST: process.env.SUPER_ADMIN_IP_WHITELIST ? process.env.SUPER_ADMIN_IP_WHITELIST.split(',') : []
+};
