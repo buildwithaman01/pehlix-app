@@ -259,6 +259,8 @@ export const AdminService = {
       role: 'superAdmin',
       action: 'impersonation_started',
       superAdmin: true,
+      isImpersonation: true,
+      impersonatedBy: adminId,
       timestamp: new Date(),
       details: { targetUserId, labId, reason }
     });

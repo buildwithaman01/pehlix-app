@@ -13,18 +13,17 @@ import { authorize } from '../../middleware/rbac.middleware.js';
 
 const router = Router();
 
-// Apply base middleware chain: authenticate → verifyTenant → requireModule('inventory')
+// Apply base middleware chain: authenticate → verifyTenant
 router.use(authenticate);
 router.use(verifyTenant);
-router.use(requireModule('inventory'));
 
-router.get('/', authorize('owner', 'technician', 'pathologist'), InventoryController.getItems);
-router.post('/', authorize('owner'), validateRequest(createItemSchema), InventoryController.createItem);
-router.get('/alerts', authorize('owner', 'technician'), InventoryController.getAlerts);
-router.get('/consumption', authorize('owner'), InventoryController.getConsumption);
-router.get('/:id', authorize('owner', 'technician'), InventoryController.getItemById);
-router.put('/:id', authorize('owner'), validateRequest(updateItemSchema), InventoryController.updateItem);
-router.patch('/:id', authorize('owner'), validateRequest(updateItemSchema), InventoryController.updateItem);
-router.post('/:id/adjust', authorize('owner', 'technician'), validateRequest(adjustStockSchema), InventoryController.adjustStock);
+router.get('/', authorize('owner', 'technician', 'pathologist'), requireModule('inventory'), InventoryController.getItems);
+router.post('/', authorize('owner'), requireModule('inventory'), validateRequest(createItemSchema), InventoryController.createItem);
+router.get('/alerts', authorize('owner', 'technician'), requireModule('inventory'), InventoryController.getAlerts);
+router.get('/consumption', authorize('owner'), requireModule('inventory'), InventoryController.getConsumption);
+router.get('/:id', authorize('owner', 'technician'), requireModule('inventory'), InventoryController.getItemById);
+router.put('/:id', authorize('owner'), requireModule('inventory'), validateRequest(updateItemSchema), InventoryController.updateItem);
+router.patch('/:id', authorize('owner'), requireModule('inventory'), validateRequest(updateItemSchema), InventoryController.updateItem);
+router.post('/:id/adjust', authorize('owner', 'technician'), requireModule('inventory'), validateRequest(adjustStockSchema), InventoryController.adjustStock);
 
 export default router;

@@ -103,7 +103,9 @@ export const InvoiceController = {
         throw new AppError('Invalid payment method', 'VALIDATION_ERROR', 400);
       }
 
-      const invoice = await Invoice.findOne({ _id: id, labId, isDeleted: { $ne: true } });
+      const invoice = await Invoice.findOne({ _id: id, labId, isDeleted: { $ne: true } })
+        .populate('patientId')
+        .populate('labId');
       if (!invoice) {
         throw new AppError('Invoice not found', 'REPORT_NOT_FOUND', 404);
       }
@@ -117,7 +119,7 @@ export const InvoiceController = {
       const payment = await Payment.create({
         labId,
         invoiceId: invoice._id,
-        patientId: invoice.patientId,
+        patientId: invoice.patientId?._id || invoice.patientId,
         amount,
         method,
         status: 'success',
@@ -143,6 +145,24 @@ export const InvoiceController = {
           labId: labId.toString(),
           invoiceId: invoice._id.toString()
         });
+      }
+
+      // Trigger WhatsApp payment received flow
+      if (invoice.patientId && invoice.patientId.phone) {
+        const patientName = `${invoice.patientId.firstName} ${invoice.patientId.lastName || ''}`.trim();
+        const reportLink = `${config.NEXT_PUBLIC_APP_URL}/reports/view/${invoice.visitId}`;
+        const labName = invoice.labId?.name || 'Pehlix Lab';
+        await QStashService.enqueueNotification(
+          'payment_received',
+          {
+            patientName,
+            amount: amount,
+            reportLink,
+            labName,
+            labId: labId.toString()
+          },
+          invoice.patientId.phone
+        );
       }
 
       return sendSuccess(res, { payment, invoice }, 'Manual payment recorded successfully');
