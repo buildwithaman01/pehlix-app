@@ -201,6 +201,117 @@ export const WhatsAppService = {
         error: lastError?.message
       };
     }
+  },
+
+  /**
+   * Sends a direct text message via WhatsApp using Meta Cloud API (non-template message).
+   * Falls back to SMS via MSG91 if all 3 attempts fail.
+   */
+  async sendDirectText(phone, text, labId) {
+    if (!labId) {
+      try {
+        const Lab = mongoose.model('Lab');
+        const defaultLab = await Lab.findOne();
+        if (defaultLab) {
+          labId = defaultLab._id;
+        } else {
+          labId = new mongoose.Types.ObjectId();
+        }
+      } catch (err) {
+        labId = new mongoose.Types.ObjectId();
+      }
+    }
+
+    const recipientType = 'owner';
+
+    // Initialize notification log
+    const notification = await Notification.create({
+      labId,
+      recipientPhone: phone,
+      recipientType,
+      channel: 'whatsapp',
+      templateName: 'direct_text_message',
+      variables: { text },
+      status: 'queued',
+      retryCount: 0
+    });
+
+    const payload = {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: phone,
+      type: 'text',
+      text: {
+        preview_url: false,
+        body: text
+      }
+    };
+
+    let attempt = 0;
+    let success = false;
+    let lastError = null;
+    let externalMessageId = null;
+
+    // Retry loop (3 attempts)
+    while (attempt < 3 && !success) {
+      try {
+        attempt++;
+        const response = await axios.post(
+          `https://graph.facebook.com/v18.0/${config.META_WHATSAPP_PHONE_NUMBER_ID}/messages`,
+          payload,
+          {
+            headers: {
+              Authorization: `Bearer ${config.META_WHATSAPP_ACCESS_TOKEN}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        externalMessageId = response.data?.messages?.[0]?.id || 'meta_msg_success_placeholder';
+        success = true;
+      } catch (error) {
+        lastError = error;
+        notification.retryCount = attempt;
+        await notification.save();
+      }
+    }
+
+    if (success) {
+      notification.status = 'sent';
+      notification.externalMessageId = externalMessageId;
+      notification.sentAt = new Date();
+      await notification.save();
+      return { success: true, messageId: externalMessageId };
+    } else {
+      notification.status = 'failed';
+      notification.failureReason = lastError?.response?.data 
+        ? JSON.stringify(lastError.response.data) 
+        : lastError?.message || 'Meta API Call Failed';
+      await notification.save();
+
+      // Trigger SMS Fallback via MSG91
+      console.log(`[SMS Fallback Triggered for ${phone}] Message: "${text}"`);
+      const smsResult = await SmsService.send(phone, text);
+
+      // Log SMS fallback notification
+      await Notification.create({
+        labId,
+        recipientPhone: phone,
+        recipientType,
+        channel: 'sms',
+        templateName: 'direct_text_message',
+        variables: { text, fallbackOriginalTemplate: 'direct_text_message', smsText: text },
+        status: smsResult.success ? 'sent' : 'failed',
+        failureReason: smsResult.success ? undefined : (typeof smsResult.error === 'object' ? JSON.stringify(smsResult.error) : (smsResult.error || 'SMS failed')),
+        sentAt: smsResult.success ? new Date() : undefined
+      });
+
+      return {
+        success: false,
+        fallbackSent: smsResult.success,
+        error: lastError?.message
+      };
+    }
   }
 };
 

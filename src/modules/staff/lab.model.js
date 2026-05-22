@@ -137,6 +137,13 @@ const labSchema = new mongoose.Schema({
     type: String,
     default: 'diagnostic_lab',
     required: true
+  },
+  healthScore: {
+    type: Number,
+    default: 0
+  },
+  healthScoreUpdatedAt: {
+    type: Date
   }
 }, {
   timestamps: true
