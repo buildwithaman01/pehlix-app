@@ -222,7 +222,7 @@ cronRouter.post('/low-stock-alerts', async (req, res) => {
         continue;
       }
 
-      const itemsListStr = items.map(item => `- ${item.itemName} (Stock: ${item.currentStock}, Min: ${item.minimumStock})`).join('\n');
+      const itemsListStr = items.map(item => `- ${item.name} (Stock: ${item.currentStock}, Min: ${item.minimumStock})`).join('\n');
       const message = `Low Stock Alert for ${lab.name}:\nThe following inventory items are below their minimum threshold:\n${itemsListStr}`;
 
       try {

@@ -107,7 +107,7 @@ async function runTests() {
   await Notification.deleteMany({ templateName: 'owner_daily_summary' });
   await Notification.deleteMany({ templateName: 'direct_text_message' });
   await AuditLog.deleteMany({});
-  await InventoryItem.deleteMany({ itemName: /^TestItem/ });
+  await InventoryItem.deleteMany({ name: /^TestItem/ });
   await InventoryLog.deleteMany({});
   await HomeCollection.deleteMany({});
   await PlatformAlert.deleteMany({});
@@ -374,22 +374,33 @@ async function runTests() {
   // Inventory Item and Log
   const item = await InventoryItem.create({
     labId: lab._id,
-    itemName: 'TestItem CBC Reagent',
+    name: 'TestItem CBC Reagent',
+    category: 'reagent',
+    unit: 'vials',
     currentStock: 3,
     minimumStock: 5, // low stock alert!
     isDeleted: false
   });
   await InventoryLog.create({
     labId: lab._id,
-    inventoryItemId: item._id,
-    action: 'Stock check'
+    itemId: item._id,
+    type: 'adjustment',
+    quantityChange: -2,
+    quantityBefore: 5,
+    quantityAfter: 3,
+    performedBy: owner._id,
+    notes: 'Stock check'
   });
 
   // Home Collection
   await HomeCollection.create({
     labId: lab._id,
+    visitId: visits[0]._id,
     patientId: patients[0]._id,
-    status: 'pending',
+    assignedPhlebotomist: owner._id,
+    timeSlot: '9-11am',
+    address: { street: '123 Test Street' },
+    status: 'scheduled',
     scheduledDate: new Date()
   });
   console.log(`✔ Seeded WhatsApp notification, Inventory low stock item + log, and Home collection.`);
@@ -642,7 +653,7 @@ async function runTests() {
   await Notification.deleteMany({ templateName: 'owner_daily_summary' });
   await Notification.deleteMany({ templateName: 'direct_text_message' });
   await AuditLog.deleteMany({});
-  await InventoryItem.deleteMany({ itemName: /^TestItem/ });
+  await InventoryItem.deleteMany({ name: /^TestItem/ });
   await InventoryLog.deleteMany({});
   await HomeCollection.deleteMany({});
   await PlatformAlert.deleteMany({});

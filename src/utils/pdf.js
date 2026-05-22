@@ -3,8 +3,21 @@ import { config } from '../config/index.js';
 
 // Initialize QStash Client
 const qstashClient = new Client({
-  token: config.UPSTASH_QSTASH_TOKEN
+  token: config.UPSTASH_QSTASH_TOKEN,
+  baseUrl: config.UPSTASH_QSTASH_URL
 });
+
+const qstashPublishJSON = async (options) => {
+  const url = options.url || '';
+  const isLocalhost = url.includes('localhost') || url.includes('127.0.0.1') || url.includes('::1');
+  const isPlaceholderToken = !config.UPSTASH_QSTASH_TOKEN || config.UPSTASH_QSTASH_TOKEN.startsWith('PLACEHOLDER');
+  
+  if (process.env.NODE_ENV === 'test' || isLocalhost || isPlaceholderToken) {
+    console.log(`[MOCK QSTASH PDF] Published PDF job to: ${url}`);
+    return { messageId: `mock-pdf-msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` };
+  }
+  return await qstashClient.publishJSON(options);
+};
 
 export const PdfService = {
   /**
@@ -75,7 +88,7 @@ export const PdfService = {
     const failureCallback = `${config.NEXT_PUBLIC_APP_URL}/api/internal/pdf/failed`;
 
     // Publish to QStash
-    const res = await qstashClient.publishJSON({
+    const res = await qstashPublishJSON({
       url: endpoint,
       body: payload,
       headers: {
@@ -124,7 +137,7 @@ export const PdfService = {
 
     const failureCallback = `${config.NEXT_PUBLIC_APP_URL}/api/internal/pdf/failed`;
 
-    const res = await qstashClient.publishJSON({
+    const res = await qstashPublishJSON({
       url: nextNode,
       body: payload,
       headers: {

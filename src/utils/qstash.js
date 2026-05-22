@@ -2,7 +2,8 @@ import { Client } from '@upstash/qstash';
 import { config } from '../config/index.js';
 
 const qstashClient = new Client({
-  token: config.UPSTASH_QSTASH_TOKEN
+  token: config.UPSTASH_QSTASH_TOKEN,
+  baseUrl: config.UPSTASH_QSTASH_URL
 });
 
 export const QStashService = {
@@ -14,6 +15,14 @@ export const QStashService = {
    * @returns {Promise<string>} The messageId from QStash.
    */
   async enqueue(endpoint, payload, delaySeconds = 0) {
+    const isLocalhost = endpoint.includes('localhost') || endpoint.includes('127.0.0.1') || endpoint.includes('::1');
+    const isPlaceholderToken = !config.UPSTASH_QSTASH_TOKEN || config.UPSTASH_QSTASH_TOKEN.startsWith('PLACEHOLDER');
+    
+    if (process.env.NODE_ENV === 'test' || isLocalhost || isPlaceholderToken) {
+      console.log(`[MOCK QSTASH] Enqueued job to: ${endpoint} with delay ${delaySeconds}s`);
+      return `mock-msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    }
+
     const options = {
       url: endpoint,
       body: payload
