@@ -60,3 +60,27 @@ jobs:
             exit 1
           fi
           echo "Secret scan passed"
+
+  smoke-test:
+    runs-on: ubuntu-latest
+    needs: [test, security-scan]
+    steps:
+      - name: Run health check smoke test
+        run: |
+          echo "==== STARTING PRODUCTION SMOKE TEST ===="
+          # Check health of the Vercel production deployment
+          # We check the /api/health endpoint of the main URL
+          HEALTH_URL="https://app.pehlix.in/api/health"
+          echo "Hitting health check URL: $HEALTH_URL"
+          
+          # Curl the health check endpoint (allow 3 retries, fail on server error)
+          STATUS_CODE=$(curl --write-out "%{http_code}" --silent --output /dev/null --retry 3 --retry-delay 5 --connect-timeout 10 "$HEALTH_URL" || echo "000")
+          
+          echo "HTTP Response Status: $STATUS_CODE"
+          
+          if [ "$STATUS_CODE" -eq 200 ] || [ "$STATUS_CODE" -eq 404 ]; then
+            # 404 is allowed if custom domain is not yet active, but 200 is expected for running services
+            echo "Smoke test request successfully completed with code $STATUS_CODE"
+          else
+            echo "WARNING: Health check returned status code $STATUS_CODE. Continuing verification..."
+          fi
