@@ -32,14 +32,14 @@ export const QStashService = {
    * @param {string} phone - Recipient phone number.
    * @returns {Promise<string>} The messageId from QStash.
    */
-  async enqueueNotification(templateName, variables, phone) {
+  async enqueueNotification(templateName, variables, phone, delaySeconds = 0) {
     const endpoint = `${config.NEXT_PUBLIC_APP_URL}/api/internal/notifications/send`;
     const payload = {
       templateName,
       variables,
       phone
     };
-    return this.enqueue(endpoint, payload);
+    return this.enqueue(endpoint, payload, delaySeconds);
   },
 
   /**
@@ -52,14 +52,14 @@ export const QStashService = {
 };
 
 // Also support named export and destructured single payload signature
-export const enqueueNotification = async (firstArg, variables, phone) => {
+export const enqueueNotification = async (firstArg, variables, phone, delaySeconds = 0) => {
   if (typeof firstArg === 'object' && firstArg !== null) {
     // Called as: enqueueNotification({ templateName, phone, variables })
     const { templateName, phone: p, variables: vars } = firstArg;
-    return QStashService.enqueueNotification(templateName, vars, p);
+    return QStashService.enqueueNotification(templateName, vars, p, delaySeconds);
   }
   // Called as: enqueueNotification(templateName, variables, phone)
-  return QStashService.enqueueNotification(firstArg, variables, phone);
+  return QStashService.enqueueNotification(firstArg, variables, phone, delaySeconds);
 };
 
 export default QStashService;

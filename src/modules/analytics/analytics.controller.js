@@ -67,6 +67,16 @@ export const AnalyticsController = {
     }
   },
 
+  async getHealthScore(req, res, next) {
+    try {
+      const labId = req.user.labId;
+      const score = await AnalyticsService.calculateHealthScore(labId);
+      return sendSuccess(res, score, 'Lab health score retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async getPendingPayments(req, res, next) {
     try {
       const labId = req.user.labId;

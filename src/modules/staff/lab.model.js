@@ -47,7 +47,8 @@ const billingSchema = new mongoose.Schema({
     default: 'trial'
   },
   trialStartDate: { type: Date },
-  trialEndDate: { type: Date }
+  trialEndDate: { type: Date },
+  customPricingNotes: { type: String, trim: true }
 }, { _id: false });
 
 const labSchema = new mongoose.Schema({
@@ -143,6 +144,13 @@ const labSchema = new mongoose.Schema({
     default: 0
   },
   healthScoreUpdatedAt: {
+    type: Date
+  },
+  tokenVersion: {
+    type: Number,
+    default: 0
+  },
+  suspendedAt: {
     type: Date
   }
 }, {

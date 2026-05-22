@@ -11,6 +11,7 @@ import Invoice from '../billing/invoice.model.js';
 import qstashService from '../../utils/qstash.js';
 import SmsService from '../../utils/sms.js';
 import { AppError } from '../../utils/errors.js';
+import InventoryService from '../inventory/inventory.service.js';
 
 export const ResultService = {
   /**
@@ -191,6 +192,13 @@ export const ResultService = {
     }
 
     await result.save();
+
+    // Auto consume inventory reagents
+    try {
+      await InventoryService.autoConsumeForTest(labId, testId, visitId, enteredBy);
+    } catch (err) {
+      console.error('[INVENTORY] Auto-consumption error in submitResult:', err);
+    }
 
     // 6. Check if all tests for the visit have results entered.
     // If so, update visit status to 'resultsEntered'

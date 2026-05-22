@@ -1,5 +1,9 @@
 import PatientService from './patient.service.js';
 import Patient from './patient.model.js';
+import User from '../staff/user.model.js';
+import Visit from '../visits/visit.model.js';
+import Report from '../reports/report.model.js';
+import Result from '../results/result.model.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
 import { AppError } from '../../utils/errors.js';
 
@@ -128,6 +132,105 @@ export const PatientController = {
 
       const patient = await PatientService.findByPhone(labId, phone);
       return sendSuccess(res, patient, patient ? 'Patient found' : 'No matching patient found');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Get patient portal profile.
+   */
+  async getPortalProfile(req, res, next) {
+    try {
+      const userId = req.user.userId;
+      const user = await User.findById(userId);
+      if (!user) {
+        return sendError(res, 'USER_NOT_FOUND', 'Patient user not found', {}, 404);
+      }
+
+      const patients = await Patient.find({ phone: user.phone, isDeleted: { $ne: true } }).populate('labId');
+      return sendSuccess(res, { user, patients }, 'Portal profile retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Get patient portal reports and trends.
+   */
+  async getPortalReports(req, res, next) {
+    try {
+      const userId = req.user.userId;
+      const user = await User.findById(userId);
+      if (!user) {
+        return sendError(res, 'USER_NOT_FOUND', 'Patient user not found', {}, 404);
+      }
+
+      // Find all patient records matching phone number
+      const patients = await Patient.find({ phone: user.phone, isDeleted: { $ne: true } });
+      const patientIds = patients.map(p => p._id);
+
+      // Find all reports corresponding to these patient records
+      const reports = await Report.find({
+        patientId: { $in: patientIds },
+        status: { $in: ['approved', 'generating', 'generated', 'delivered'] },
+        isDeleted: { $ne: true }
+      })
+      .populate('labId')
+      .populate('patientId')
+      .populate({
+        path: 'visitId',
+        populate: [
+          { path: 'tests' },
+          { path: 'referredBy' }
+        ]
+      })
+      .sort({ createdAt: -1 });
+
+      // Build parameter trends: get all approved results
+      const visitIds = reports.map(r => r.visitId ? r.visitId._id : null).filter(Boolean);
+      const results = await Result.find({
+        visitId: { $in: visitIds },
+        isApproved: true,
+        isDeleted: { $ne: true }
+      })
+      .populate('testId')
+      .populate({
+        path: 'visitId',
+        select: 'createdAt visitCode'
+      });
+
+      // Format parameter trends: group by parameter name, collect chronological values
+      const trends = {};
+      results.forEach(resObj => {
+        const visitDate = resObj.visitId?.createdAt || resObj.createdAt;
+        const visitCode = resObj.visitId?.visitCode || 'N/A';
+        resObj.parameters.forEach(param => {
+          const numValue = parseFloat(param.value);
+          if (!isNaN(numValue)) {
+            if (!trends[param.parameterName]) {
+              trends[param.parameterName] = {
+                parameterName: param.parameterName,
+                unit: param.unit || '',
+                data: []
+              };
+            }
+            trends[param.parameterName].data.push({
+              visitCode,
+              date: visitDate,
+              value: numValue,
+              status: param.status || 'normal'
+            });
+          }
+        });
+      });
+
+      // Sort data in each trend chronologically
+      Object.keys(trends).forEach(paramName => {
+        trends[paramName].data.sort((a, b) => new Date(a.date) - new Date(b.date));
+      });
+
+      return sendSuccess(res, { reports, trends: Object.values(trends) }, 'Portal reports and trends retrieved successfully');
     } catch (error) {
       next(error);
     }

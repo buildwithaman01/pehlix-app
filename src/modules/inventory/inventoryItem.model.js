@@ -7,10 +7,19 @@ const inventoryItemSchema = new mongoose.Schema({
     required: true,
     index: true
   },
-  itemName: {
+  name: {
     type: String,
     required: true,
     trim: true
+  },
+  category: {
+    type: String,
+    enum: ['reagent', 'consumable', 'equipment', 'stationery', 'other'],
+    required: true
+  },
+  unit: {
+    type: String,
+    required: true
   },
   currentStock: {
     type: Number,
@@ -20,16 +29,56 @@ const inventoryItemSchema = new mongoose.Schema({
   minimumStock: {
     type: Number,
     required: true,
+    default: 10
+  },
+  reorderQuantity: {
+    type: Number,
+    default: 50
+  },
+  costPerUnit: {
+    type: Number,
     default: 0
+  },
+  supplier: {
+    name: { type: String },
+    phone: { type: String },
+    email: { type: String }
+  },
+  barcodeId: {
+    type: String,
+    sparse: true,
+    unique: true
+  },
+  location: {
+    type: String
+  },
+  expiryDate: {
+    type: Date
+  },
+  reagentConsumption: [{
+    testId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'TestMaster'
+    },
+    quantityPerTest: {
+      type: Number
+    }
+  }],
+  isActive: {
+    type: Boolean,
+    default: true
   },
   isDeleted: {
     type: Boolean,
-    default: false,
-    required: true
+    default: false
   }
 }, {
   timestamps: true
 });
+
+// Indexes
+inventoryItemSchema.index({ labId: 1, category: 1 });
+inventoryItemSchema.index({ labId: 1, name: 1 });
 
 const InventoryItem = mongoose.models.InventoryItem || mongoose.model('InventoryItem', inventoryItemSchema);
 export default InventoryItem;

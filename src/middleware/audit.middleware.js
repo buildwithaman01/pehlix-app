@@ -40,6 +40,13 @@ const auditLogSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
     required: true
+  },
+  superAdmin: {
+    type: Boolean,
+    default: false
+  },
+  details: {
+    type: mongoose.Schema.Types.Mixed
   }
 });
 

@@ -144,13 +144,15 @@ export const DoctorController = {
       const visitIds = visits.map(v => v._id);
       const reports = await Report.find({ visitId: { $in: visitIds } });
       const reportMap = reports.reduce((acc, r) => {
-        acc[r.visitId.toString()] = r.status;
+        acc[r.visitId.toString()] = { status: r.status, pdfUrl: r.pdfUrl };
         return acc;
       }, {});
 
       const results = visits.map(v => {
         const vObj = v.toObject();
-        vObj.reportStatus = reportMap[v._id.toString()] || 'pending';
+        const repInfo = reportMap[v._id.toString()];
+        vObj.reportStatus = repInfo ? repInfo.status : 'pending';
+        vObj.pdfUrl = repInfo ? repInfo.pdfUrl : null;
         return vObj;
       });
 

@@ -13,7 +13,11 @@ import { generalRateLimit } from '../../middleware/rateLimit.middleware.js';
 
 const router = Router();
 
-// Apply middleware chain: authenticate → verifyTenant → authorize('owner', 'receptionist') to all routes
+// Patient portal routes (require authenticate and patient role only, no tenant context as patients span labs)
+router.get('/portal/profile', authenticate, authorize('patient'), PatientController.getPortalProfile);
+router.get('/portal/reports', authenticate, authorize('patient'), PatientController.getPortalReports);
+
+// Apply middleware chain for lab staff routes
 router.use(authenticate);
 router.use(verifyTenant);
 router.use(authorize('owner', 'receptionist'));

@@ -71,6 +71,12 @@ import invoiceRouter from './modules/billing/invoice.routes.js';
 import doctorRouter from './modules/doctors/doctor.routes.js';
 import cronRouter from './modules/webhooks/cron.webhook.js';
 import analyticsRouter from './modules/analytics/analytics.routes.js';
+import adminRouter from './modules/admin/admin.routes.js';
+import inventoryRouter from './modules/inventory/inventory.routes.js';
+import homeCollectionRouter from './modules/homeCollections/homeCollection.routes.js';
+import staffRouter from './modules/staff/staff.routes.js';
+import settingsRouter from './modules/staff/settings.routes.js';
+import testsRouter from './modules/staff/tests.routes.js';
 
 // Internal Background Job Processing routes
 import mongoose from 'mongoose';
@@ -266,6 +272,12 @@ app.use('/api/invoices', invoiceRouter);
 app.use('/api/doctors', doctorRouter);
 app.use('/api/cron', cronRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/admin', adminRouter);
+app.use('/api/inventory', inventoryRouter);
+app.use('/api/home-collections', homeCollectionRouter);
+app.use('/api/staff', staffRouter);
+app.use('/api/settings', settingsRouter);
+app.use('/api/tests', testsRouter);
 app.use('/api/internal', internalRouter);
 
 export default app;
