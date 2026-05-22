@@ -68,6 +68,8 @@ import alertRouter from './modules/results/alert.routes.js';
 import sampleRouter from './modules/samples/sample.routes.js';
 import webhookRouter from './modules/webhooks/webhook.routes.js';
 import invoiceRouter from './modules/billing/invoice.routes.js';
+import doctorRouter from './modules/doctors/doctor.routes.js';
+import cronRouter from './modules/webhooks/cron.webhook.js';
 
 // Internal Background Job Processing routes
 import mongoose from 'mongoose';
@@ -260,6 +262,8 @@ app.use('/api/critical', alertRouter);
 app.use('/api/samples', sampleRouter);
 app.use('/api/webhooks', webhookRouter);
 app.use('/api/invoices', invoiceRouter);
+app.use('/api/doctors', doctorRouter);
+app.use('/api/cron', cronRouter);
 app.use('/api/internal', internalRouter);
 
 export default app;

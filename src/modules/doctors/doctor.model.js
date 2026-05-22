@@ -62,6 +62,11 @@ const doctorSchema = new mongoose.Schema({
   isDeleted: {
     type: Boolean,
     default: false
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    index: true
   }
 }, {
   timestamps: true

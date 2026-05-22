@@ -3,6 +3,7 @@ import { config } from '../../config/index.js';
 import QStashService from '../../utils/qstash.js';
 import Payment from './payment.model.js';
 import Invoice from './invoice.model.js';
+import DoctorService from '../doctors/doctor.service.js';
 
 export const PaymentService = {
   /**
@@ -50,6 +51,20 @@ export const PaymentService = {
       invoice.paymentStatus = 'partial';
     }
     await invoice.save();
+
+    // Trigger doctor commission calculation if the invoice is fully paid
+    if (invoice.paymentStatus === 'paid') {
+      try {
+        await DoctorService.calculateAndRecordCommission(
+          invoice.labId._id || invoice.labId,
+          invoice.visitId,
+          invoice._id,
+          invoice.totalAmount
+        );
+      } catch (err) {
+        console.error('[Payment Service] Failed to calculate and record doctor commission:', err);
+      }
+    }
 
     // 4. Create Payment record
     const paymentRecord = await Payment.create({
