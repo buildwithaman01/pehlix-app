@@ -26,10 +26,40 @@ router.get(
   ReportController.getReportById
 );
 
+router.get(
+  '/:id/url',
+  authorize('owner', 'pathologist', 'technician', 'receptionist', 'doctor'),
+  ReportController.getPdfUrl
+);
+
+router.get(
+  '/:id/download',
+  authorize('owner', 'pathologist', 'technician', 'receptionist'),
+  ReportController.downloadReport
+);
+
 router.post(
-  '/:id/deliver',
+  '/:id/regenerate',
   authorize('owner', 'pathologist'),
-  ReportController.deliverReport
+  ReportController.regenerateReport
+);
+
+router.post(
+  '/:id/resend-patient',
+  authorize('owner', 'pathologist', 'technician', 'receptionist'),
+  ReportController.resendToPatient
+);
+
+router.post(
+  '/:id/resend-doctor',
+  authorize('owner', 'pathologist', 'technician', 'receptionist'),
+  ReportController.resendToDoctor
+);
+
+router.post(
+  '/:id/share-link',
+  authorize('owner', 'pathologist', 'technician', 'receptionist'),
+  ReportController.generateShareLink
 );
 
 export default router;

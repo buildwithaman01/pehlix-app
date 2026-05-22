@@ -75,8 +75,39 @@ import PaymentService from './modules/billing/payment.service.js';
 import WhatsAppService from './utils/whatsapp.js';
 import SmsService from './utils/sms.js';
 import QStashService from './utils/qstash.js';
+import pdfWebhookController from './modules/webhooks/pdf.webhook.js';
+import ReportService from './modules/reports/report.service.js';
+import Report from './modules/reports/report.model.js';
+import Visit from './modules/visits/visit.model.js';
+import { AppError } from './utils/errors.js';
 
 const internalRouter = express.Router();
+
+internalRouter.post('/pdf/generated', pdfWebhookController.onPdfGenerated);
+internalRouter.post('/pdf/failed', pdfWebhookController.onPdfFailed);
+
+internalRouter.post('/reports/generate', async (req, res, next) => {
+  try {
+    const { visitId, labId } = req.body;
+    console.log(`[QStash PDF Generation Job] Starting generation for visit ${visitId}`);
+    
+    // Find or create report
+    let report = await Report.findOne({ visitId, labId });
+    if (!report) {
+      const visit = await Visit.findById(visitId);
+      if (!visit) {
+        throw new AppError('Visit not found', 'VISIT_NOT_FOUND', 404);
+      }
+      report = await ReportService.createReportRecord(labId, visitId, visit.patientId);
+    }
+    
+    const result = await ReportService.triggerPdfGeneration(report._id);
+    return res.status(200).json({ success: true, messageId: result.messageId, reportCode: result.reportCode });
+  } catch (error) {
+    console.error('[QStash PDF Generation Job] Failed starting PDF generation:', error);
+    next(error);
+  }
+});
 
 internalRouter.post('/payments/process', async (req, res, next) => {
   try {

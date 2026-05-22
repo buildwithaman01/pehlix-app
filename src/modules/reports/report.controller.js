@@ -1,5 +1,7 @@
 import Report from './report.model.js';
 import Result from '../results/result.model.js';
+import ReportService from './report.service.js';
+import R2Service from '../../utils/r2.js';
 import { sendSuccess } from '../../utils/response.js';
 import { AppError } from '../../utils/errors.js';
 
@@ -59,44 +61,109 @@ export const ReportController = {
   },
 
   /**
-   * Mark report delivered and log WhatsApp notification payload placeholder
+   * GET /api/reports/:id/url
+   * Generates a 24-hour signed URL for internal lab owner/staff access.
    */
-  async deliverReport(req, res, next) {
+  async getPdfUrl(req, res, next) {
+    try {
+      const { id } = req.params;
+      const labId = req.user.labId;
+      const userRole = req.user.role || 'staff';
+
+      const result = await ReportService.getReportWithSignedUrl(labId, id, userRole);
+      return sendSuccess(res, { signedUrl: result.signedUrl }, 'Signed PDF URL generated successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * GET /api/reports/:id/download
+   * Generates a signed URL for direct download, forcing Content-Disposition: attachment.
+   */
+  async downloadReport(req, res, next) {
     try {
       const { id } = req.params;
       const labId = req.user.labId;
 
-      const report = await Report.findOne({ _id: id, labId, isDeleted: { $ne: true } }).populate('patientId');
+      const report = await Report.findOne({ _id: id, labId });
       if (!report) {
         throw new AppError('Report not found', 'REPORT_NOT_FOUND', 404);
       }
+      if (!report.pdfUrl) {
+        throw new AppError('Report PDF is not ready yet', 'REPORT_NOT_READY', 400);
+      }
 
-      report.deliveredAt = new Date();
-      report.deliveryChannel = 'whatsapp';
-      await report.save();
+      const downloadUrl = await R2Service.getSignedDownloadUrl(report.pdfUrl);
+      return sendSuccess(res, { downloadUrl }, 'Download URL generated successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
 
-      // Log WhatsApp delivery placeholder (implemented fully in AGENT_09)
-      const recipientPhone = report.patientId ? report.patientId.phone : null;
-      const patientName = report.patientId ? `${report.patientId.firstName} ${report.patientId.lastName || ''}`.trim() : 'Patient';
+  /**
+   * POST /api/reports/:id/regenerate
+   * Archives old PDF version, resets status, and re-queues PDF generation job.
+   */
+  async regenerateReport(req, res, next) {
+    try {
+      const { id } = req.params;
+      const labId = req.user.labId;
 
-      console.log('--- [REPORT DELIVER WHATSAPP PAYLOAD] ---');
-      console.log(
-        JSON.stringify(
-          {
-            type: 'deliver_report_via_whatsapp',
-            reportId: report._id.toString(),
-            patientPhone: recipientPhone,
-            patientName,
-            pdfUrl: report.pdfUrl,
-            labId: labId.toString()
-          },
-          null,
-          2
-        )
+      const result = await ReportService.regenerateReport(labId, id);
+      return sendSuccess(
+        res,
+        { report: result.report, messageId: result.messageId },
+        'Report regeneration queued successfully'
       );
-      console.log('-----------------------------------------');
+    } catch (error) {
+      next(error);
+    }
+  },
 
-      return sendSuccess(res, report, 'Report marked as delivered and delivery job queued');
+  /**
+   * POST /api/reports/:id/resend-patient
+   * Manually triggers WhatsApp resending of the report link or paywall link to patient.
+   */
+  async resendToPatient(req, res, next) {
+    try {
+      const { id } = req.params;
+      const labId = req.user.labId;
+
+      await ReportService.resendToPatient(labId, id);
+      return sendSuccess(res, null, 'Report resent to patient successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * POST /api/reports/:id/resend-doctor
+   * Manually triggers WhatsApp sending of the report link to referred doctor.
+   */
+  async resendToDoctor(req, res, next) {
+    try {
+      const { id } = req.params;
+      const labId = req.user.labId;
+
+      await ReportService.resendToDoctor(labId, id);
+      return sendSuccess(res, null, 'Report sent to referring doctor successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * POST /api/reports/:id/share-link
+   * Generates a 7-day signed share link.
+   */
+  async generateShareLink(req, res, next) {
+    try {
+      const { id } = req.params;
+      const labId = req.user.labId;
+
+      const result = await ReportService.generateShareLink(labId, id);
+      return sendSuccess(res, result, 'Share link generated successfully');
     } catch (error) {
       next(error);
     }

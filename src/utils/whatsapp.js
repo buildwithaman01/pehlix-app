@@ -191,7 +191,7 @@ export const WhatsAppService = {
         templateName,
         variables: { ...variables, fallbackOriginalTemplate: templateName, smsText: smsMessage },
         status: smsResult.success ? 'sent' : 'failed',
-        failureReason: smsResult.success ? undefined : (smsResult.error || 'SMS failed'),
+        failureReason: smsResult.success ? undefined : (typeof smsResult.error === 'object' ? JSON.stringify(smsResult.error) : (smsResult.error || 'SMS failed')),
         sentAt: smsResult.success ? new Date() : undefined
       });
 

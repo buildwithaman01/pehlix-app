@@ -59,6 +59,9 @@ const reportSchema = new mongoose.Schema({
   doctorDeliveredAt: {
     type: Date
   },
+  generatedAt: {
+    type: Date
+  },
   isDeleted: {
     type: Boolean,
     default: false

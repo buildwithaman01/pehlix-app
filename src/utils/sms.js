@@ -37,7 +37,10 @@ export const SmsService = {
       return { success: true, data: response.data };
     } catch (error) {
       console.error('MSG91 SMS failure:', error.response?.data || error.message);
-      return { success: false, error: error.response?.data || error.message };
+      const errDetail = error.response?.data
+        ? (typeof error.response.data === 'object' ? JSON.stringify(error.response.data) : String(error.response.data))
+        : error.message;
+      return { success: false, error: errDetail };
     }
   }
 };
