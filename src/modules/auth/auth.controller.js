@@ -13,6 +13,15 @@ const AuthController = {
     try {
       const { phone } = req.body;
 
+      const user = await User.findOne({ phone });
+      if (!user) {
+        throw new AppError('Access denied. OTP login is restricted to authorized roles.', 'AUTH_OTP_DENIED', 403);
+      }
+
+      if (user.role !== 'doctor' && user.role !== 'owner') {
+        throw new AppError('Access denied. OTP login is restricted to doctors and authorized users.', 'AUTH_OTP_DENIED', 403);
+      }
+
       const otp = AuthService.generateOtp();
       await AuthService.storeOtp(phone, otp);
 
@@ -35,7 +44,7 @@ const AuthController = {
   },
 
   /**
-   * Verification of OTP. Creates a minimal patient record if they are logging in for the first time.
+   * Verification of OTP. Restricted to doctors and owner roles.
    */
   async verifyOtp(req, res, next) {
     try {
@@ -43,16 +52,10 @@ const AuthController = {
 
       await AuthService.verifyOtp(phone, otp);
 
-      let user = await User.findOne({ phone });
+      const user = await User.findOne({ phone });
       
-      if (!user) {
-        // Create minimal patient user record
-        user = await User.create({
-          role: 'patient',
-          name: `Patient-${phone.slice(-4)}`,
-          phone: phone,
-          labId: null
-        });
+      if (!user || (user.role !== 'doctor' && user.role !== 'owner')) {
+        throw new AppError('Access denied. User not authorized for OTP login.', 'AUTH_OTP_DENIED', 403);
       }
 
       // Increment token version to invalidate previous sessions
