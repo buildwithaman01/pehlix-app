@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api/extended.api';
 import { useAuthStore } from '@/lib/stores/auth.store';
@@ -36,7 +37,10 @@ import {
   Lock,
   Unlock,
   Settings,
-  Users
+  Users,
+  MessageSquare,
+  Sliders,
+  Palette
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -63,26 +67,60 @@ export default function LabDetailPage({ params: paramsPromise }) {
     customPricingNotes: ''
   });
 
-  // Modules Form State
+  // Modules, Features, Limits, and Customization states
   const [modulesForm, setModulesForm] = useState({});
+  const [featuresForm, setFeaturesForm] = useState({
+    whatsappAlerts: false,
+    smsAlerts: false,
+    automatedReminders: false,
+    dailySummaries: false,
+    doctorPortalAccess: false
+  });
+  const [limitsForm, setLimitsForm] = useState({
+    staffCount: 3,
+    monthlyTests: 300,
+    monthlyPatients: 500
+  });
+  const [customizationForm, setCustomizationForm] = useState({
+    primaryColor: '#0F3D3E',
+    reportFooterText: ''
+  });
 
   // Fetch Lab Details
   const { data: lab, isLoading: isLabLoading, error: labError } = useQuery({
     queryKey: ['lab', id],
-    queryFn: () => adminApi.getLabById(id),
-    onSuccess: (data) => {
-      if (data) {
-        setBillingForm({
-          plan: data.plan || 'starter',
-          status: data.billing?.status || 'trial',
-          nextBillingDate: formatDateForInput(data.billing?.nextBillingDate),
-          trialEndDate: formatDateForInput(data.billing?.trialEndDate),
-          customPricingNotes: data.billing?.customPricingNotes || ''
-        });
-        setModulesForm(data.planConfig?.modules || {});
-      }
-    }
+    queryFn: () => adminApi.getLabById(id)
   });
+
+  // React Query v5 compatible useEffect hook for form state initialization
+  useEffect(() => {
+    if (lab) {
+      setBillingForm({
+        plan: lab.plan || 'starter',
+        status: lab.billing?.status || 'trial',
+        nextBillingDate: formatDateForInput(lab.billing?.nextBillingDate),
+        trialEndDate: formatDateForInput(lab.billing?.trialEndDate),
+        customPricingNotes: lab.billing?.customPricingNotes || ''
+      });
+      setModulesForm(lab.planConfig?.modules || {});
+      setFeaturesForm({
+        whatsappAlerts: lab.planConfig?.features?.whatsappAlerts || false,
+        smsAlerts: lab.planConfig?.features?.smsAlerts || false,
+        automatedReminders: lab.planConfig?.features?.automatedReminders || false,
+        dailySummaries: lab.planConfig?.features?.dailySummaries || false,
+        doctorPortalAccess: lab.planConfig?.features?.doctorPortalAccess || false
+      });
+      setLimitsForm({
+        staffCount: lab.planConfig?.limits?.staffCount || 3,
+        monthlyTests: lab.planConfig?.limits?.monthlyTests || 300,
+        monthlyPatients: lab.planConfig?.limits?.monthlyPatients || 500
+      });
+      setCustomizationForm({
+        primaryColor: lab.planConfig?.features?.primaryColor || '#0F3D3E',
+        reportFooterText: lab.planConfig?.features?.reportFooterText || ''
+      });
+    }
+  }, [lab]);
 
   // Fetch Audit Logs
   const { data: auditLogsData, isLoading: isAuditLoading } = useQuery({
@@ -225,6 +263,36 @@ export default function LabDetailPage({ params: paramsPromise }) {
     });
   };
 
+  const handleSaveFeatures = () => {
+    updateConfigMutation.mutate({
+      features: {
+        ...featuresForm,
+        primaryColor: customizationForm.primaryColor,
+        reportFooterText: customizationForm.reportFooterText
+      }
+    });
+  };
+
+  const handleSaveLimits = () => {
+    updateConfigMutation.mutate({
+      limits: {
+        staffCount: Number(limitsForm.staffCount),
+        monthlyTests: Number(limitsForm.monthlyTests),
+        monthlyPatients: Number(limitsForm.monthlyPatients)
+      }
+    });
+  };
+
+  const handleSaveCustomization = () => {
+    updateConfigMutation.mutate({
+      features: {
+        ...featuresForm,
+        primaryColor: customizationForm.primaryColor,
+        reportFooterText: customizationForm.reportFooterText
+      }
+    });
+  };
+
   if (isLabLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
@@ -323,7 +391,7 @@ export default function LabDetailPage({ params: paramsPromise }) {
             Billing & Override
           </TabsTrigger>
           <TabsTrigger value="modules" className="rounded-xl px-4 py-2 text-sm font-medium data-[state=active]:bg-emerald-deep data-[state=active]:text-white">
-            Module Config
+            Features & Config
           </TabsTrigger>
           <TabsTrigger value="audit" className="rounded-xl px-4 py-2 text-sm font-medium data-[state=active]:bg-emerald-deep data-[state=active]:text-white">
             Audit Trails
@@ -528,41 +596,251 @@ export default function LabDetailPage({ params: paramsPromise }) {
           </div>
         </TabsContent>
 
-        {/* Tab 3: Module Config */}
-        <TabsContent value="modules" className="bg-white rounded-2xl border border-neutral-200 p-6">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h3 className="text-base font-bold text-[#1E1E1E]">Feature Flag & Module Config</h3>
-              <p className="text-xs text-neutral-500 mt-0.5">Toggle active feature sets for this laboratory tenant.</p>
-            </div>
-            <Button 
-              onClick={handleSaveModules} 
-              disabled={updateConfigMutation.isPending}
-              className="bg-emerald-deep hover:bg-emerald-deep/90 text-white flex items-center gap-2 rounded-xl"
-            >
-              <Save className="w-4 h-4" />
-              {updateConfigMutation.isPending ? 'Saving Modules...' : 'Save Configuration'}
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {Object.keys(modulesForm).map((modKey) => (
-              <div 
-                key={modKey} 
-                className="flex items-center justify-between p-4 border border-neutral-200 rounded-xl hover:bg-neutral-50/20 transition-colors"
-              >
-                <div className="space-y-0.5">
-                  <span className="text-sm font-bold capitalize text-[#1E1E1E]">{modKey.replace(/([A-Z])/g, ' $1')}</span>
-                  <span className="text-[10px] text-neutral-400 block">Module active on tenant portal</span>
+        {/* Tab 3: Module Config & Customizations */}
+        <TabsContent value="modules" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Card 1: Modules Access */}
+            <div className="bg-white rounded-2xl border border-neutral-200 p-6 flex flex-col justify-between">
+              <div>
+                <h3 className="text-base font-bold text-[#1E1E1E] flex items-center gap-2">
+                  <Sliders className="w-5 h-5 text-emerald-deep" />
+                  Modules Access
+                </h3>
+                <p className="text-xs text-neutral-500 mt-0.5 mb-4">Toggle root capability modules for the tenant portal.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {Object.keys(modulesForm).map((modKey) => (
+                    <div 
+                      key={modKey} 
+                      className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50/50 transition-colors"
+                    >
+                      <div className="space-y-0.5">
+                        <span className="text-sm font-semibold capitalize text-[#1E1E1E]">{modKey.replace(/([A-Z])/g, ' $1')}</span>
+                        <span className="text-[10px] text-neutral-400 block">Access to {modKey.replace(/([A-Z])/g, ' $1').toLowerCase()}</span>
+                      </div>
+                      <input 
+                        type="checkbox"
+                        checked={!!modulesForm[modKey]}
+                        onChange={(e) => handleModuleToggle(modKey, e.target.checked)}
+                        className="w-4 h-4 rounded text-emerald-deep border-neutral-300 focus:ring-emerald-deep accent-emerald-600"
+                      />
+                    </div>
+                  ))}
                 </div>
-                <input 
-                  type="checkbox"
-                  checked={!!modulesForm[modKey]}
-                  onChange={(e) => handleModuleToggle(modKey, e.target.checked)}
-                  className="w-4 h-4 rounded text-emerald-deep border-neutral-300 focus:ring-emerald-deep"
-                />
               </div>
-            ))}
+              
+              <div className="flex justify-end pt-4 border-t border-neutral-100 mt-6">
+                <Button 
+                  onClick={handleSaveModules} 
+                  disabled={updateConfigMutation.isPending}
+                  className="bg-emerald-deep hover:bg-emerald-deep/90 text-white flex items-center gap-2 rounded-xl text-xs py-1.5 h-8"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  {updateConfigMutation.isPending ? 'Saving Modules...' : 'Save Modules'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Column 2: Features, Limits, Customization */}
+            <div className="space-y-6">
+              {/* Card 2: Features */}
+              <div className="bg-white rounded-2xl border border-neutral-200 p-6">
+                <h3 className="text-base font-bold text-[#1E1E1E] flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-emerald-deep" />
+                  Custom Feature Add-ons
+                </h3>
+                <p className="text-xs text-neutral-500 mt-0.5 mb-4">Manage specific system capabilities and notification integrations.</p>
+                <div className="space-y-3">
+                  {/* WhatsApp Alerts */}
+                  <div className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50/50 transition-colors">
+                    <div className="space-y-0.5">
+                      <span className="text-sm font-semibold text-[#1E1E1E]">WhatsApp Alerts</span>
+                      <span className="text-[10px] text-neutral-400 block">Send automated PDF reports & booking receipts via WhatsApp API</span>
+                    </div>
+                    <input 
+                      type="checkbox"
+                      checked={!!featuresForm.whatsappAlerts}
+                      onChange={(e) => setFeaturesForm(prev => ({ ...prev, whatsappAlerts: e.target.checked }))}
+                      className="w-4 h-4 rounded text-emerald-deep border-neutral-300 focus:ring-emerald-deep accent-emerald-600"
+                    />
+                  </div>
+
+                  {/* SMS Alerts */}
+                  <div className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50/50 transition-colors">
+                    <div className="space-y-0.5">
+                      <span className="text-sm font-semibold text-[#1E1E1E]">SMS Alerts</span>
+                      <span className="text-[10px] text-neutral-400 block">Send SMS notifications for test bookings and clinical updates</span>
+                    </div>
+                    <input 
+                      type="checkbox"
+                      checked={!!featuresForm.smsAlerts}
+                      onChange={(e) => setFeaturesForm(prev => ({ ...prev, smsAlerts: e.target.checked }))}
+                      className="w-4 h-4 rounded text-emerald-deep border-neutral-300 focus:ring-emerald-deep accent-emerald-600"
+                    />
+                  </div>
+
+                  {/* Automated Reminders */}
+                  <div className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50/50 transition-colors">
+                    <div className="space-y-0.5">
+                      <span className="text-sm font-semibold text-[#1E1E1E]">Automated Reminders</span>
+                      <span className="text-[10px] text-neutral-400 block">Auto-dispatch payment & appointment follow-up alerts to patients</span>
+                    </div>
+                    <input 
+                      type="checkbox"
+                      checked={!!featuresForm.automatedReminders}
+                      onChange={(e) => setFeaturesForm(prev => ({ ...prev, automatedReminders: e.target.checked }))}
+                      className="w-4 h-4 rounded text-emerald-deep border-neutral-300 focus:ring-emerald-deep accent-emerald-600"
+                    />
+                  </div>
+
+                  {/* Daily Summaries */}
+                  <div className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50/50 transition-colors">
+                    <div className="space-y-0.5">
+                      <span className="text-sm font-semibold text-[#1E1E1E]">Daily Summaries</span>
+                      <span className="text-[10px] text-neutral-400 block">Deliver operational and daily financial status summaries to lab owners</span>
+                    </div>
+                    <input 
+                      type="checkbox"
+                      checked={!!featuresForm.dailySummaries}
+                      onChange={(e) => setFeaturesForm(prev => ({ ...prev, dailySummaries: e.target.checked }))}
+                      className="w-4 h-4 rounded text-emerald-deep border-neutral-300 focus:ring-emerald-deep accent-emerald-600"
+                    />
+                  </div>
+
+                  {/* Doctor Portal Access */}
+                  <div className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50/50 transition-colors">
+                    <div className="space-y-0.5">
+                      <span className="text-sm font-semibold text-[#1E1E1E]">Doctor Portal Access</span>
+                      <span className="text-[10px] text-neutral-400 block">Activate external physician dashboards for checking patient diagnostics logs</span>
+                    </div>
+                    <input 
+                      type="checkbox"
+                      checked={!!featuresForm.doctorPortalAccess}
+                      onChange={(e) => setFeaturesForm(prev => ({ ...prev, doctorPortalAccess: e.target.checked }))}
+                      className="w-4 h-4 rounded text-emerald-deep border-neutral-300 focus:ring-emerald-deep accent-emerald-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4 border-t border-neutral-100 mt-4">
+                  <Button 
+                    onClick={handleSaveFeatures} 
+                    disabled={updateConfigMutation.isPending}
+                    className="bg-emerald-deep hover:bg-emerald-deep/90 text-white flex items-center gap-2 rounded-xl text-xs py-1.5 h-8"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    {updateConfigMutation.isPending ? 'Saving Features...' : 'Save Features'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Card 3: Limits */}
+              <div className="bg-white rounded-2xl border border-neutral-200 p-6">
+                <h3 className="text-base font-bold text-[#1E1E1E] flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-emerald-deep" />
+                  Tenant Usage Limits
+                </h3>
+                <p className="text-xs text-neutral-500 mt-0.5 mb-4">Cap maximum capacities to manage database load and billing tier compliance.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-neutral-600">Max Staff Accounts</Label>
+                    <Input 
+                      type="number" 
+                      min="1"
+                      value={limitsForm.staffCount}
+                      onChange={(e) => setLimitsForm(prev => ({ ...prev, staffCount: e.target.value }))}
+                      className="rounded-xl h-9"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-neutral-600">Max Monthly Tests</Label>
+                    <Input 
+                      type="number" 
+                      min="0"
+                      value={limitsForm.monthlyTests}
+                      onChange={(e) => setLimitsForm(prev => ({ ...prev, monthlyTests: e.target.value }))}
+                      className="rounded-xl h-9"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-neutral-600">Max Monthly Patients</Label>
+                    <Input 
+                      type="number" 
+                      min="0"
+                      value={limitsForm.monthlyPatients}
+                      onChange={(e) => setLimitsForm(prev => ({ ...prev, monthlyPatients: e.target.value }))}
+                      className="rounded-xl h-9"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4 border-t border-neutral-100 mt-4">
+                  <Button 
+                    onClick={handleSaveLimits} 
+                    disabled={updateConfigMutation.isPending}
+                    className="bg-emerald-deep hover:bg-emerald-deep/90 text-white flex items-center gap-2 rounded-xl text-xs py-1.5 h-8"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    {updateConfigMutation.isPending ? 'Saving Limits...' : 'Save Limits'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Card 4: Customization */}
+              <div className="bg-white rounded-2xl border border-neutral-200 p-6">
+                <h3 className="text-base font-bold text-[#1E1E1E] flex items-center gap-2">
+                  <Palette className="w-5 h-5 text-emerald-deep" />
+                  Branding & Layout Style
+                </h3>
+                <p className="text-xs text-neutral-500 mt-0.5 mb-4">Customize themes and report details specifically for this lab&apos;s identity.</p>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-neutral-600">Primary Color Theme</Label>
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-9 h-9 rounded-xl border border-neutral-200 shadow-sm shrink-0 transition-colors" 
+                        style={{ backgroundColor: customizationForm.primaryColor }}
+                      />
+                      <Input 
+                        type="color" 
+                        value={customizationForm.primaryColor}
+                        onChange={(e) => setCustomizationForm(prev => ({ ...prev, primaryColor: e.target.value }))}
+                        className="w-12 h-9 p-0.5 border rounded-xl cursor-pointer shrink-0"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#000000"
+                        value={customizationForm.primaryColor}
+                        onChange={(e) => setCustomizationForm(prev => ({ ...prev, primaryColor: e.target.value }))}
+                        className="rounded-xl h-9 font-mono text-sm uppercase"
+                      />
+                    </div>
+                    <span className="text-[10px] text-neutral-400 block">Determines the core accents of patient portals and generated receipts</span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-neutral-600">Report Footer Notice Text</Label>
+                    <Textarea 
+                      placeholder="e.g. This report is computer generated and does not require a physical signature."
+                      value={customizationForm.reportFooterText}
+                      onChange={(e) => setCustomizationForm(prev => ({ ...prev, reportFooterText: e.target.value }))}
+                      className="rounded-xl min-h-[70px] text-sm"
+                    />
+                    <span className="text-[10px] text-neutral-400 block">Appended to the bottom of all generated clinical patient PDFs</span>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4 border-t border-neutral-100 mt-4">
+                  <Button 
+                    onClick={handleSaveCustomization} 
+                    disabled={updateConfigMutation.isPending}
+                    className="bg-emerald-deep hover:bg-emerald-deep/90 text-white flex items-center gap-2 rounded-xl text-xs py-1.5 h-8"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    {updateConfigMutation.isPending ? 'Saving Customization...' : 'Save Customization'}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </TabsContent>
 
