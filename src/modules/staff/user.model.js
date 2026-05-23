@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Lab',
     required: function() {
-      return this.role !== 'superAdmin';
+      return this.role !== 'superAdmin' && this.role !== 'patient';
     },
     index: true
   },

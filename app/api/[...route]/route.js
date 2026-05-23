@@ -1,5 +1,6 @@
 import serverless from 'serverless-http';
 import { app } from '../../../src/app.js';
+// Touch to force recompilation of the Express API wrapper
 import { connectDB } from '../../../src/utils/db.js';
 
 // Wrap the Express app with serverless-http

@@ -1,5 +1,7 @@
 import rateLimit from 'express-rate-limit';
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 /**
  * Rate limiter for OTP requests: max 3 requests per 15 minutes per IP.
  */
@@ -8,6 +10,7 @@ export const otpRateLimit = rateLimit({
   max: 3,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => isDev,
   message: {
     status: 'error',
     code: 'AUTH_OTP_MAX_ATTEMPTS',
@@ -23,6 +26,7 @@ export const loginRateLimit = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => isDev,
   message: {
     status: 'error',
     code: 'AUTH_OTP_MAX_ATTEMPTS',
@@ -38,6 +42,7 @@ export const generalRateLimit = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => isDev,
   message: {
     status: 'error',
     code: 'SYSTEM_RATE_LIMIT_EXCEEDED',
@@ -53,9 +58,11 @@ export const publicRateLimit = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => isDev,
   message: {
     status: 'error',
     code: 'SYSTEM_RATE_LIMIT_EXCEEDED',
     message: 'Too many requests on report verification endpoint. Please try again later.'
   }
 });
+

@@ -24,6 +24,12 @@ const AuthService = {
    * Checks if the phone number is locked first.
    */
   async storeOtp(phone, otp) {
+    if (process.env.NODE_ENV !== 'production') {
+      // In development, store but bypass the lock check to prevent blocking developers
+      await redis.set(`otp:${phone}`, otp, { ex: 300 });
+      return;
+    }
+
     const isLocked = await redis.get(`otp:locked:${phone}`);
     if (isLocked) {
       throw new AppError('This number is locked due to too many OTP attempts. Please try again later.', 'AUTH_OTP_MAX_ATTEMPTS', 429);
@@ -38,6 +44,25 @@ const AuthService = {
    * Tracks and increments attempts, applying a 30-minute lock if failures exceed 3.
    */
   async verifyOtp(phone, inputOtp) {
+    if (process.env.NODE_ENV !== 'production') {
+      // Allow '123456' as a development master code
+      if (inputOtp === '123456') {
+        return true;
+      }
+
+      const storedOtp = await redis.get(`otp:${phone}`);
+      if (!storedOtp) {
+        throw new AppError('OTP has expired or does not exist. (In development, you can use "123456")', 'AUTH_OTP_EXPIRED', 400);
+      }
+
+      if (storedOtp !== inputOtp) {
+        throw new AppError('Invalid OTP. (In development, you can use "123456")', 'AUTH_OTP_INVALID', 400);
+      }
+
+      await redis.del(`otp:${phone}`);
+      return true;
+    }
+
     const isLocked = await redis.get(`otp:locked:${phone}`);
     if (isLocked) {
       throw new AppError('Too many failed attempts. Number locked for 30 minutes.', 'AUTH_OTP_MAX_ATTEMPTS', 429);
