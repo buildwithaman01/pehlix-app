@@ -22,6 +22,18 @@ export const AdminController = {
   },
 
   /**
+   * Create a new lab and provision its owner user account.
+   */
+  async createLab(req, res, next) {
+    try {
+      const result = await AdminService.createLab(req.body, req.user.userId);
+      return sendSuccess(res, result, 'Laboratory registered successfully and owner account provisioned', 201);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
    * Get lab by ID
    */
   async getLabById(req, res, next) {

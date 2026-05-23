@@ -63,7 +63,16 @@ function OtpForm() {
       const { user, accessToken } = res.data.data;
       setUser(user, accessToken);
       toast.success(`Welcome back, ${user.name || 'there'}!`);
-      router.push('/dashboard');
+      
+      if (user.role === 'superAdmin') {
+        router.push('/platform');
+      } else if (user.role === 'doctor') {
+        router.push('/portal/doctor/dashboard');
+      } else if (user.role === 'patient') {
+        router.push('/portal/patient/reports');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Invalid OTP. Try again.');
       setDigits(['', '', '', '', '', '']);

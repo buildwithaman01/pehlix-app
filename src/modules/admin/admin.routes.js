@@ -1,6 +1,7 @@
 import express from 'express';
 import AdminController from './admin.controller.js';
 import { superAdminAuth, superAdminAudit } from './admin.middleware.js';
+import { validateRequest, createLabSchema } from './admin.validation.js';
 
 const router = express.Router();
 
@@ -10,6 +11,7 @@ router.use(superAdminAudit);
 
 // Lab Management Routes
 router.get('/labs', AdminController.getAllLabs);
+router.post('/labs', validateRequest(createLabSchema), AdminController.createLab);
 router.get('/labs/:id', AdminController.getLabById);
 router.put('/labs/:id/config', AdminController.updateLabConfig);
 router.put('/labs/:id/suspend', AdminController.suspendLab);

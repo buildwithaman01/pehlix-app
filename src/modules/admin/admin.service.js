@@ -79,6 +79,135 @@ export const AdminService = {
   },
 
   /**
+   * Create a new lab and provision its owner user account.
+   */
+  async createLab(data, createdBy) {
+    // 1. Check if user with owner phone already exists
+    const existingUser = await User.findOne({ phone: data.ownerPhone });
+    if (existingUser) {
+      throw new Error(`A user with phone number ${data.ownerPhone} already exists`);
+    }
+
+    // 2. Generate slug
+    const baseSlug = data.labName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const rand = Math.random().toString(36).substring(2, 6);
+    const slug = `${baseSlug}-${rand}`;
+
+    // 3. Define default plan configuration based on selected plan
+    let planConfig = {
+      modules: {
+        patients: true,
+        visits: true,
+        results: true,
+        reports: true,
+        billing: true,
+        doctors: true,
+        staff: true,
+        notifications: true,
+        samples: true,
+        inventory: false,
+        homeCollections: false,
+        analytics: false,
+        webhooks: false
+      },
+      limits: {
+        staffCount: 3,
+        monthlyTests: 300
+      },
+      features: {
+        whatsappAlerts: true,
+        smsAlerts: true
+      },
+      flags: {}
+    };
+
+    if (data.plan === 'growth') {
+      planConfig.modules.inventory = true;
+      planConfig.modules.homeCollections = true;
+      planConfig.modules.analytics = true;
+      planConfig.limits.staffCount = 10;
+      planConfig.limits.monthlyTests = 1500;
+      planConfig.features.automatedReminders = true;
+      planConfig.features.dailySummaries = true;
+    } else if (data.plan === 'pro' || data.plan === 'custom') {
+      planConfig.modules.inventory = true;
+      planConfig.modules.homeCollections = true;
+      planConfig.modules.analytics = true;
+      planConfig.modules.webhooks = true;
+      planConfig.limits.staffCount = 999;
+      planConfig.limits.monthlyTests = 99999;
+      planConfig.features.automatedReminders = true;
+      planConfig.features.dailySummaries = true;
+      planConfig.features.webhookIntegrations = true;
+      planConfig.features.customTemplates = true;
+    }
+
+    // 4. Create the Lab document
+    const now = new Date();
+    const trialEndDate = new Date();
+    trialEndDate.setDate(now.getDate() + 14); // 14-day trial
+
+    const lab = new Lab({
+      name: data.labName,
+      slug,
+      phone: data.phone,
+      email: data.email,
+      address: {
+        city: data.city
+      },
+      plan: data.plan,
+      planConfig,
+      billing: {
+        status: 'trial',
+        trialStartDate: now,
+        trialEndDate
+      },
+      isActive: true,
+      isSuspended: false
+    });
+
+    const savedLab = await lab.save();
+
+    // 5. Create the Owner User account
+    const owner = new User({
+      name: data.ownerName,
+      role: 'owner',
+      phone: data.ownerPhone,
+      email: data.ownerEmail,
+      labId: savedLab._id,
+      isOtpOnly: true,
+      isActive: true
+    });
+
+    const savedOwner = await owner.save();
+
+    // 6. Link the owner to the lab document
+    savedLab.owner = savedOwner._id;
+    await savedLab.save();
+
+    // 7. Log to audit logs
+    await AuditLog.create({
+      labId: savedLab._id,
+      userId: createdBy,
+      role: 'superAdmin',
+      action: 'lab_onboarded',
+      superAdmin: true,
+      timestamp: new Date(),
+      details: {
+        labId: savedLab._id,
+        ownerId: savedOwner._id,
+        plan: data.plan,
+        createdBy
+      }
+    });
+
+    return {
+      lab: savedLab,
+      owner: savedOwner
+    };
+  },
+
+  /**
    * Find lab by ID
    */
   async getLabById(labId) {

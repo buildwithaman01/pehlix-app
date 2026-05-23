@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { adminApi } from '@/lib/api/extended.api';
 import PageHeader from '@/components/shared/PageHeader';
@@ -9,9 +9,12 @@ import EmptyState from '@/components/shared/EmptyState';
 import KpiCard from '@/components/shared/KpiCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 import { 
   Building2, 
   IndianRupee, 
@@ -31,6 +34,47 @@ export default function LabsPage() {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [healthScoreBelow, setHealthScoreBelow] = useState('');
   const [page, setPage] = useState(1);
+
+  const qc = useQueryClient();
+  const [isAddLabOpen, setIsAddLabOpen] = useState(false);
+  const [labForm, setLabForm] = useState({
+    labName: '',
+    city: '',
+    phone: '',
+    email: '',
+    plan: 'starter',
+    ownerName: '',
+    ownerPhone: '',
+    ownerEmail: ''
+  });
+
+  const createLabMutation = useMutation({
+    mutationFn: adminApi.createLab,
+    onSuccess: (data) => {
+      toast.success(`Lab "${data.lab.name}" created successfully!`);
+      qc.invalidateQueries(['labs']);
+      qc.invalidateQueries(['platformMetrics']);
+      setIsAddLabOpen(false);
+      setLabForm({
+        labName: '',
+        city: '',
+        phone: '',
+        email: '',
+        plan: 'starter',
+        ownerName: '',
+        ownerPhone: '',
+        ownerEmail: ''
+      });
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || 'Failed to create laboratory');
+    }
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    createLabMutation.mutate(labForm);
+  };
 
   // Filters object to send to the backend API
   const filters = {
@@ -103,6 +147,11 @@ export default function LabsPage() {
       <PageHeader 
         title="Labs Management" 
         subtitle="Manage billing, configurations, and operations of all tenant laboratories."
+        action={
+          <Button onClick={() => setIsAddLabOpen(true)} className="bg-[#0F3D3E] hover:bg-[#0c2f30] text-white rounded-xl">
+            + Add New Lab
+          </Button>
+        }
       />
 
       {/* KPI Section */}
@@ -374,6 +423,144 @@ export default function LabsPage() {
           </div>
         )}
       </div>
+
+      <Dialog open={isAddLabOpen} onOpenChange={setIsAddLabOpen}>
+        <DialogContent className="sm:max-w-[550px] bg-white rounded-2xl border border-neutral-200 p-6 overflow-y-auto max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-[#1E1E1E]">Add New Laboratory</DialogTitle>
+            <DialogDescription className="text-neutral-500 text-sm">
+              Provision a new laboratory tenant and assign its owner account.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-4">
+              {/* Lab Details */}
+              <div className="col-span-2">
+                <h3 className="text-xs font-semibold text-emerald-800 uppercase tracking-wider mb-2">Laboratory Details</h3>
+              </div>
+              <div className="space-y-1 col-span-2">
+                <Label htmlFor="labName" className="text-sm font-medium text-neutral-700">Lab Name</Label>
+                <Input
+                  id="labName"
+                  required
+                  placeholder="e.g. Metro Diagnostics"
+                  value={labForm.labName}
+                  onChange={(e) => setLabForm({ ...labForm, labName: e.target.value })}
+                  className="rounded-xl border-neutral-200 text-[#1E1E1E]"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="city" className="text-sm font-medium text-neutral-700">City</Label>
+                <Input
+                  id="city"
+                  required
+                  placeholder="e.g. Mumbai"
+                  value={labForm.city}
+                  onChange={(e) => setLabForm({ ...labForm, city: e.target.value })}
+                  className="rounded-xl border-neutral-200 text-[#1E1E1E]"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="plan" className="text-sm font-medium text-neutral-700">Subscription Plan</Label>
+                <Select
+                  value={labForm.plan}
+                  onValueChange={(val) => setLabForm({ ...labForm, plan: val })}
+                >
+                  <SelectTrigger id="plan" className="rounded-xl border-neutral-200 text-[#1E1E1E]">
+                    <SelectValue placeholder="Select Plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="starter">Starter Plan</SelectItem>
+                    <SelectItem value="growth">Growth Plan</SelectItem>
+                    <SelectItem value="pro">Pro Plan</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="phone" className="text-sm font-medium text-neutral-700">Lab Phone</Label>
+                <Input
+                  id="phone"
+                  required
+                  type="tel"
+                  placeholder="10-digit number"
+                  value={labForm.phone}
+                  onChange={(e) => setLabForm({ ...labForm, phone: e.target.value })}
+                  className="rounded-xl border-neutral-200 text-[#1E1E1E]"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="email" className="text-sm font-medium text-neutral-700">Lab Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="e.g. contact@metro.com"
+                  value={labForm.email}
+                  onChange={(e) => setLabForm({ ...labForm, email: e.target.value })}
+                  className="rounded-xl border-neutral-200 text-[#1E1E1E]"
+                />
+              </div>
+
+              {/* Owner Details */}
+              <div className="col-span-2 mt-2">
+                <h3 className="text-xs font-semibold text-emerald-800 uppercase tracking-wider mb-2">Owner Account Details</h3>
+              </div>
+              <div className="space-y-1 col-span-2">
+                <Label htmlFor="ownerName" className="text-sm font-medium text-neutral-700">Owner Name</Label>
+                <Input
+                  id="ownerName"
+                  required
+                  placeholder="e.g. Dr. Rajesh Kumar"
+                  value={labForm.ownerName}
+                  onChange={(e) => setLabForm({ ...labForm, ownerName: e.target.value })}
+                  className="rounded-xl border-neutral-200 text-[#1E1E1E]"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ownerPhone" className="text-sm font-medium text-neutral-700">Owner Phone (for OTP login)</Label>
+                <Input
+                  id="ownerPhone"
+                  required
+                  type="tel"
+                  placeholder="10-digit number"
+                  value={labForm.ownerPhone}
+                  onChange={(e) => setLabForm({ ...labForm, ownerPhone: e.target.value })}
+                  className="rounded-xl border-neutral-200 text-[#1E1E1E]"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ownerEmail" className="text-sm font-medium text-neutral-700">Owner Email</Label>
+                <Input
+                  id="ownerEmail"
+                  required
+                  type="email"
+                  placeholder="e.g. rajesh@metro.com"
+                  value={labForm.ownerEmail}
+                  onChange={(e) => setLabForm({ ...labForm, ownerEmail: e.target.value })}
+                  className="rounded-xl border-neutral-200 text-[#1E1E1E]"
+                />
+              </div>
+            </div>
+            <DialogFooter className="mt-6 flex gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddLabOpen(false)}
+                className="rounded-xl border-neutral-200 text-[#1E1E1E]"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createLabMutation.isLoading}
+                className="bg-[#0F3D3E] hover:bg-[#0c2f30] text-white rounded-xl min-w-[100px]"
+              >
+                {createLabMutation.isLoading ? 'Creating...' : 'Provision Lab'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
