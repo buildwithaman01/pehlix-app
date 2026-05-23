@@ -39,6 +39,10 @@ export async function verifyTenant(req, res, next) {
       return sendError(res, 'TENANT_NOT_FOUND', 'Tenant is inactive', {}, 404);
     }
 
+    if (lab.registrationState === 'sandbox' && lab.tempTrialExpiry && new Date() > new Date(lab.tempTrialExpiry)) {
+      return sendError(res, 'TRIAL_EXPIRED', 'Your temporary unverified trial has expired. Please contact support or the administrator to extend your trial.', {}, 403);
+    }
+
     req.planConfig = lab.planConfig;
     req.lab = lab;
     next();

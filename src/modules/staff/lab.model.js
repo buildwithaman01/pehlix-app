@@ -150,6 +150,18 @@ const labSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  registrationState: {
+    type: String,
+    enum: ['sandbox', 'pending_approval', 'production'],
+    default: 'sandbox'
+  },
+  tempTrialExpiry: {
+    type: Date
+  },
+  isTrialExtended: {
+    type: Boolean,
+    default: false
+  },
   suspendedAt: {
     type: Date
   }

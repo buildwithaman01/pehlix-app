@@ -143,9 +143,21 @@ export const AdminService = {
     }
 
     // 4. Create the Lab document
+    const hasGst = !!(data.gstNumber || data.gstin);
+    const hasNabl = !!(data.nablNumber);
+    const isTrusted = hasGst || hasNabl;
+
+    const registrationState = isTrusted ? 'production' : 'sandbox';
     const now = new Date();
     const trialEndDate = new Date();
-    trialEndDate.setDate(now.getDate() + 14); // 14-day trial
+    let tempTrialExpiry = null;
+
+    if (isTrusted) {
+      trialEndDate.setDate(now.getDate() + 14); // Standard 14-day trial
+    } else {
+      trialEndDate.setDate(now.getDate() + 2); // 2-day trial
+      tempTrialExpiry = new Date(now.getTime() + 48 * 60 * 60 * 1000); // 48 hours
+    }
 
     const lab = new Lab({
       name: data.labName,
@@ -162,6 +174,10 @@ export const AdminService = {
         trialStartDate: now,
         trialEndDate
       },
+      nablNumber: data.nablNumber || '',
+      gstNumber: data.gstNumber || data.gstin || '',
+      registrationState,
+      tempTrialExpiry,
       isActive: true,
       isSuspended: false
     });
@@ -419,9 +435,25 @@ export const AdminService = {
 
     const updateObj = {};
     if (billingOverride.plan !== undefined) updateObj['plan'] = billingOverride.plan;
-    if (billingOverride.status !== undefined) updateObj['billing.status'] = billingOverride.status;
+    if (billingOverride.status !== undefined) {
+      updateObj['billing.status'] = billingOverride.status;
+      if (billingOverride.status === 'active') {
+        updateObj['registrationState'] = 'production';
+        updateObj['tempTrialExpiry'] = null;
+      }
+    }
     if (billingOverride.nextBillingDate !== undefined) updateObj['billing.nextBillingDate'] = billingOverride.nextBillingDate;
-    if (billingOverride.trialEndDate !== undefined) updateObj['billing.trialEndDate'] = billingOverride.trialEndDate;
+    
+    if (billingOverride.trialEndDate !== undefined) {
+      updateObj['billing.trialEndDate'] = billingOverride.trialEndDate;
+      // Mirror the new trialEndDate to tempTrialExpiry and mark trial as extended to unlock
+      updateObj['tempTrialExpiry'] = billingOverride.trialEndDate;
+      updateObj['isTrialExtended'] = true;
+    }
+    
+    if (billingOverride.registrationState !== undefined) {
+      updateObj['registrationState'] = billingOverride.registrationState;
+    }
     if (billingOverride.customPricingNotes !== undefined) updateObj['billing.customPricingNotes'] = billingOverride.customPricingNotes;
 
     const updatedLab = await Lab.findByIdAndUpdate(labId, { $set: updateObj }, { new: true }).lean();
