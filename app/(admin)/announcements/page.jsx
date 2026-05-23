@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { 
   Volume2, 
@@ -354,7 +355,7 @@ export default function AnnouncementsPage() {
                 What happens next?
               </h4>
               <p>
-                In-app notifications are published immediately. WhatsApp messages are dispatched in parallel to the registered laboratory owner's phone number.
+                In-app notifications are published immediately. WhatsApp messages are dispatched in parallel to the registered laboratory owner&apos;s phone number.
               </p>
             </div>
           </div>

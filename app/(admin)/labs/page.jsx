@@ -551,10 +551,10 @@ export default function LabsPage() {
               </Button>
               <Button
                 type="submit"
-                disabled={createLabMutation.isLoading}
+                disabled={createLabMutation.isPending}
                 className="bg-[#0F3D3E] hover:bg-[#0c2f30] text-white rounded-xl min-w-[100px]"
               >
-                {createLabMutation.isLoading ? 'Creating...' : 'Provision Lab'}
+                {createLabMutation.isPending ? 'Creating...' : 'Provision Lab'}
               </Button>
             </DialogFooter>
           </form>

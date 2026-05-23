@@ -357,10 +357,10 @@ export default function FeatureFlagsPage() {
               </Button>
               <Button
                 type="submit"
-                disabled={saveFlagMutation.isLoading}
+                disabled={saveFlagMutation.isPending}
                 className="bg-[#0F3D3E] hover:bg-[#0c2f30] text-white rounded-xl min-w-[100px]"
               >
-                {saveFlagMutation.isLoading ? 'Saving...' : 'Save Config'}
+                {saveFlagMutation.isPending ? 'Saving...' : 'Save Config'}
               </Button>
             </DialogFooter>
           </form>
