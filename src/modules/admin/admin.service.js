@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
+import { Redis } from '@upstash/redis';
+import config from '../../config/index.js';
 import Lab from '../staff/lab.model.js';
 import User from '../staff/user.model.js';
 import Report from '../reports/report.model.js';
@@ -7,6 +9,11 @@ import PlatformAlert from '../analytics/alert.model.js';
 import { AuditLog } from '../../middleware/audit.middleware.js';
 import WhatsAppService from '../../utils/whatsapp.js';
 import PdfService from '../../utils/pdf.js';
+
+const redis = new Redis({
+  url: config.UPSTASH_REDIS_URL,
+  token: config.UPSTASH_REDIS_TOKEN
+});
 
 // --- INLINE SCHEMAS ---
 
@@ -786,6 +793,32 @@ export const AdminService = {
     }
 
     return { sent: sentCount, channels: channel };
+  },
+
+  /**
+   * Unlock OTP lockouts (brute-force locked or daily requests exceeded) for a phone number
+   */
+  async unlockOtpLockout(phone, adminId) {
+    if (!phone || phone.trim() === '') {
+      throw new Error('Phone number is required');
+    }
+
+    const dailyRequestsKey = `otp:daily_requests:${phone}`;
+    const lockedKey = `otp:locked:${phone}`;
+    const attemptsKey = `otp:attempts:${phone}`;
+    const otpKey = `otp:${phone}`;
+
+    // Deletes the lockout keys from Upstash Redis
+    const deletedDaily = await redis.del(dailyRequestsKey);
+    const deletedLocked = await redis.del(lockedKey);
+    await redis.del(attemptsKey);
+    await redis.del(otpKey);
+
+    return {
+      phone,
+      unlockedFromDailyLimit: deletedDaily > 0,
+      unlockedFromBruteForceLockout: deletedLocked > 0
+    };
   }
 };
 

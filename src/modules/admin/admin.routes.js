@@ -35,4 +35,7 @@ router.post('/dead-letter-queue/:reportId/retry', AdminController.retryDeadLette
 // Announcement Routes
 router.post('/announcements', AdminController.sendAnnouncement);
 
+// OTP Unlock Route
+router.post('/otp/unlock', AdminController.unlockOtpLockout);
+
 export default router;

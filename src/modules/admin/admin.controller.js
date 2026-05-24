@@ -231,6 +231,22 @@ export const AdminController = {
     } catch (error) {
       next(error);
     }
+  },
+
+  /**
+   * Unlock OTP lockouts (brute-force or daily limits) for a phone number
+   */
+  async unlockOtpLockout(req, res, next) {
+    try {
+      const { phone } = req.body;
+      if (!phone || phone.trim().length !== 10) {
+        return sendError(res, 'VALIDATION_FAILED', 'A valid 10-digit phone number is required to unlock', {}, 400);
+      }
+      const result = await AdminService.unlockOtpLockout(phone, req.user.userId);
+      return sendSuccess(res, result, `OTP lockouts successfully cleared for phone: ${phone}`);
+    } catch (error) {
+      next(error);
+    }
   }
 };
 
