@@ -75,7 +75,7 @@ export default function AdminLayout({ children }) {
       <aside className="hidden md:flex md:flex-col md:w-64 bg-emerald-deep text-white shrink-0">
         <div className="flex items-center h-16 px-6 border-b border-teal-soft/20">
           <div className="flex items-center gap-2">
-            <PehlixLogo variant="wordmark" className="h-6 w-auto" light={true} />
+            <PehlixLogo variant="wordmark" className="text-xl" light={true} />
             <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-teal-soft/20 text-teal-soft font-satoshi border border-teal-soft/30">Admin</span>
           </div>
         </div>
@@ -122,7 +122,7 @@ export default function AdminLayout({ children }) {
         {/* Mobile Header */}
         <header className="flex items-center justify-between h-16 px-6 bg-white border-b md:hidden shrink-0">
           <div className="flex items-center gap-2">
-            <PehlixLogo variant="wordmark" className="h-6 w-auto" light={false} />
+            <PehlixLogo variant="wordmark" className="text-xl" light={false} />
             <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-deep text-white font-satoshi">Admin</span>
           </div>
           <button
@@ -140,7 +140,7 @@ export default function AdminLayout({ children }) {
             <aside className="relative flex flex-col w-64 h-full bg-emerald-deep text-white p-6 space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <PehlixLogo variant="wordmark" className="h-6 w-auto" light={true} />
+                  <PehlixLogo variant="wordmark" className="text-xl" light={true} />
                   <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-teal-soft/20 text-teal-soft font-satoshi border border-teal-soft/30">Admin</span>
                 </div>
                 <button onClick={() => setMobileMenuOpen(false)} className="text-white">

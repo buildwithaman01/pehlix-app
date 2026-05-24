@@ -48,7 +48,8 @@ export default function LoginPage() {
             <PehlixLogo variant="icon" className="w-16 h-16 shadow-lg" />
           </div>
           <div className="flex justify-center items-center">
-            <PehlixLogo variant="wordmark" className="h-9 w-auto" light={true} />
+            <PehlixLogo variant="wordmark" className="text-3xl" light={true} />
+
           </div>
           <p className="text-[#5FB3A5] text-sm mt-2 font-medium tracking-wide">Lab Management Platform</p>
         </div>

@@ -1,16 +1,19 @@
 import React from 'react';
 
 export function PehlixWordmark({ className, light = false }) {
-  const textColor = light ? '#FFFFFF' : '#1E1E1E';
+  const textColor = light ? 'text-white' : 'text-[#1E1E1E]';
   return (
-    <svg className={className} viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* PEHLI text - using standard typography matching Satoshi */}
-      <text x="5" y="29" fill={textColor} fontFamily="var(--font-satoshi), Satoshi, sans-serif" fontWeight="800" fontSize="24" letterSpacing="0.08em">PEHLI</text>
-      {/* Left graphite/white bracket */}
-      <path d="M125 12 L116 20 L125 28" stroke={textColor} strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      {/* Right soft teal bracket */}
-      <path d="M131 12 L140 20 L131 28" stroke="#5FB3A5" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    </svg>
+    <span className={`font-satoshi font-extrabold tracking-wider inline-flex items-center ${textColor} ${className}`}>
+      <span>PEHLI</span>
+      <span className="inline-flex items-center ml-1 shrink-0" style={{ height: '0.85em', width: '0.85em' }}>
+        <svg viewBox="0 0 24 24" fill="none" className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
+          {/* Left chevron pointing right */}
+          <path d="M6 5 L11 12 L6 19" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Right chevron pointing left */}
+          <path d="M18 5 L13 12 L18 19" stroke="#5FB3A5" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+    </span>
   );
 }
 

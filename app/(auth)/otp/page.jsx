@@ -107,7 +107,8 @@ function OtpForm() {
       <div className="relative w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
           <PehlixLogo variant="icon" className="w-16 h-16 shadow-lg mb-3" />
-          <PehlixLogo variant="wordmark" className="h-9 w-auto" light={true} />
+          <PehlixLogo variant="wordmark" className="text-3xl" light={true} />
+
         </div>
 
         <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8">

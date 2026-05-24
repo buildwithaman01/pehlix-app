@@ -34,7 +34,8 @@ export default function DoctorPortalLayout({ children }) {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center gap-2">
-              <PehlixLogo variant="wordmark" className="h-6 w-auto" light={true} />
+              <PehlixLogo variant="wordmark" className="text-xl" light={true} />
+
               <span className="text-[10px] uppercase bg-white/10 text-[#5FB3A5] border border-white/15 px-1.5 py-0.5 rounded font-semibold tracking-wider font-satoshi">
                 Doctor
               </span>
