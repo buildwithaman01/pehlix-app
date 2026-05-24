@@ -21,18 +21,31 @@ const AuthService = {
 
   /**
    * Stores the generated OTP in Upstash Redis.
-   * Checks if the phone number is locked first.
+   * Checks if the phone number is locked and enforces daily request limits.
    */
   async storeOtp(phone, otp) {
     if (process.env.NODE_ENV !== 'production') {
-      // In development, store but bypass the lock check to prevent blocking developers
+      // In development, store but bypass the lock checks to prevent blocking developers
       await redis.set(`otp:${phone}`, otp, { ex: 300 });
       return;
+    }
+
+    // 1. Enforce Daily Limit (max 5 OTP requests per phone number per 24h window)
+    const dailyRequestsKey = `otp:daily_requests:${phone}`;
+    const dailyCount = await redis.get(dailyRequestsKey);
+    if (dailyCount && parseInt(dailyCount, 10) >= 5) {
+      throw new AppError('You have reached the maximum daily limit of 5 OTP requests. Please try again tomorrow.', 'AUTH_OTP_DAILY_LIMIT_EXCEEDED', 429);
     }
 
     const isLocked = await redis.get(`otp:locked:${phone}`);
     if (isLocked) {
       throw new AppError('This number is locked due to too many OTP attempts. Please try again later.', 'AUTH_OTP_MAX_ATTEMPTS', 429);
+    }
+
+    // 2. Increment Daily Requests Counter
+    const newCount = await redis.incr(dailyRequestsKey);
+    if (newCount === 1) {
+      await redis.expire(dailyRequestsKey, 86400); // 24-hour window
     }
 
     // Store the OTP with a 5-minute (300s) TTL
