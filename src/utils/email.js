@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import axios from 'axios';
 import { config } from '../config/index.js';
 
 const transporter = nodemailer.createTransport({
@@ -13,30 +14,77 @@ const transporter = nodemailer.createTransport({
 
 export const EmailService = {
   /**
-   * Send transactional email using SMTP transporter
+   * Send transactional email using Resend HTTP API directly
    */
-  async sendEmail({ to, subject, html, text }) {
-    const hasCredentials = (config.SMTP_HOST || process.env.SMTP_HOST) && (config.SMTP_USER || process.env.SMTP_USER);
-    if (!hasCredentials || config.NODE_ENV !== 'production') {
+  async sendViaResend({ to, subject, html, text }) {
+    if (!config.RESEND_API_KEY) {
+      throw new Error('Resend API key is missing from configuration');
+    }
+    const response = await axios.post(
+      'https://api.resend.com/emails',
+      {
+        from: config.SMTP_FROM || 'Pehlix Health <onboarding@resend.dev>',
+        to: [to],
+        subject,
+        html: html || text,
+        text: text || html
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${config.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return { messageId: response.data?.id || 'resend-mock-id' };
+  },
+
+  /**
+   * Send transactional email using SMTP transporter (Nodemailer)
+   */
+  async sendViaSmtp({ to, subject, html, text }) {
+    const info = await transporter.sendMail({
+      from: config.SMTP_FROM || process.env.SMTP_FROM || '"Pehlix Health" <noreply@pehlix.in>',
+      to,
+      subject,
+      text,
+      html
+    });
+    return info;
+  },
+
+  /**
+   * Unified sendEmail method that determines route dynamically
+   */
+  async sendEmail({ to, subject, html, text, preferResend = false }) {
+    // Development Mode Bypass
+    if (config.NODE_ENV !== 'production') {
       console.log('\n--- [DEVELOPMENT EMAIL OUTBOX] ---');
       console.log(`To:      ${to}`);
       console.log(`Subject: ${subject}`);
+      console.log(`Route:   ${preferResend ? 'Resend API' : 'SMTP'}`);
       console.log(`Content: ${text || html}`);
       console.log('----------------------------------\n');
       return { messageId: 'dev-mock-id' };
     }
 
     try {
-      const info = await transporter.sendMail({
-        from: config.SMTP_FROM || process.env.SMTP_FROM || '"Pehlix Health" <noreply@pehlix.in>',
-        to,
-        subject,
-        text,
-        html
-      });
-      return info;
+      if (preferResend && config.RESEND_API_KEY) {
+        return await this.sendViaResend({ to, subject, html, text });
+      }
+
+      const hasSmtp = (config.SMTP_HOST || process.env.SMTP_HOST) && (config.SMTP_USER || process.env.SMTP_USER);
+      if (hasSmtp) {
+        return await this.sendViaSmtp({ to, subject, html, text });
+      } else if (config.RESEND_API_KEY) {
+        // Fallback to Resend HTTP API if SMTP is not configured
+        return await this.sendViaResend({ to, subject, html, text });
+      } else {
+        console.warn(`[EmailService] Neither SMTP nor Resend API key is configured. Email skipped.`);
+        return null;
+      }
     } catch (error) {
-      console.error('Failed to dispatch SMTP email:', error);
+      console.error('[EmailService] Failed to dispatch email:', error);
       throw error;
     }
   },
