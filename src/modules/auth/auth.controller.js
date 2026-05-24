@@ -57,11 +57,8 @@ const AuthController = {
         patientName = `${patientRecord.firstName} ${patientRecord.lastName || ''}`.trim() || 'Patient';
       }
 
-      // Resolve the role of the user (defaults to patient if no User record exists)
-      const role = user ? user.role : 'patient';
-
-      if (role === 'patient' || role === 'doctor') {
-        // Patients and doctors -> WhatsApp (if phone is available)
+      if (phone) {
+        // Send via WhatsApp for all roles if phone is requested/available
         if (recipientPhone) {
           WhatsAppService.send(recipientPhone, 'otp_verification', { otpCode: otp, patientName }).catch((err) => {
             console.error(`[sendOtp] Failed to deliver WhatsApp to ${recipientPhone}:`, err);
@@ -71,8 +68,8 @@ const AuthController = {
             console.error(`[sendOtp] Failed to deliver email to ${recipientEmail}:`, err);
           });
         }
-      } else if (role === 'owner' || role === 'superAdmin') {
-        // Owners and Super Admins -> Email ONLY
+      } else if (email) {
+        // Send via Email if email is requested/available
         if (recipientEmail) {
           EmailService.sendOtp(recipientEmail, otp).catch((err) => {
             console.error(`[sendOtp] Failed to deliver email to ${recipientEmail}:`, err);
