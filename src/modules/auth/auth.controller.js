@@ -5,6 +5,8 @@ import Patient from '../patients/patient.model.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
 import { AppError } from '../../utils/errors.js';
 import { PERMISSIONS } from '../../config/permissions.js';
+import EmailService from '../../utils/email.js';
+import WhatsAppService from '../../utils/whatsapp.js';
 
 const AuthController = {
   /**
@@ -30,16 +32,47 @@ const AuthController = {
       const otp = AuthService.generateOtp();
       await AuthService.storeOtp(phone, otp);
 
+      // Extract recipient's email address and name for personalized delivery
+      let email = null;
+      let patientName = 'User';
+      if (user) {
+        email = user.email;
+        patientName = user.name || 'User';
+      } else {
+        const patientRecord = await Patient.findOne({ phone, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
+        if (patientRecord) {
+          email = patientRecord.email;
+          patientName = `${patientRecord.firstName} ${patientRecord.lastName || ''}`.trim() || 'Patient';
+        }
+      }
+
+      // Dispatch OTP via Email asynchronously
+      if (email) {
+        EmailService.sendOtp(email, otp).catch((err) => {
+          console.error(`[sendOtp] Failed to deliver email to ${email}:`, err);
+        });
+      } else {
+        console.log(`[sendOtp] No email registered for phone ${phone}. Skipping email OTP.`);
+      }
+
+      // Dispatch OTP via WhatsApp asynchronously
+      WhatsAppService.send(phone, 'auth_otp', { otpCode: otp, patientName }).catch((err) => {
+        console.error(`[sendOtp] Failed to deliver WhatsApp to ${phone}:`, err);
+      });
+
+      // Phone SMS OTP delivery is kept commented out in the codebase as a future fallback option
+      /*
+      try {
+        // const SmsService = await import('../../utils/sms.js');
+        // await SmsService.default.send(phone, `Your Pehlix verification code is: ${otp}. Valid for 5 minutes.`);
+      } catch (smsError) {
+        console.error('Failed to send OTP via SMS:', smsError);
+      }
+      */
+
       if (process.env.NODE_ENV !== 'production') {
         console.log(`[DEVELOPMENT] OTP for ${phone} is: ${otp}`);
         return sendSuccess(res, { otp }, 'OTP sent successfully (Dev Mode)');
-      }
-
-      // Production SMS placeholder
-      try {
-        // await smsService.send(phone, otp);
-      } catch (smsError) {
-        console.error('Failed to send OTP via SMS:', smsError);
       }
 
       return sendSuccess(res, null, 'OTP sent successfully');

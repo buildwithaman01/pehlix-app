@@ -53,6 +53,11 @@ Set these environment variables in your Vercel Dashboard under **Project Setting
 * `RAZORPAY_KEY_SECRET`: Razorpay API private secret
 * `RAZORPAY_WEBHOOK_SECRET`: Webhook verification secret from Razorpay dashboard settings
 * `RESEND_API_KEY`: Resend API key for outbound transactional emails
+* `SMTP_HOST`: SMTP Server Host name (e.g. `smtp.mailgun.org` or `smtp.gmail.com`)
+* `SMTP_PORT`: SMTP Server Port (typically `587` or `465`)
+* `SMTP_USER`: SMTP Authentication Username
+* `SMTP_PASS`: SMTP Authentication Password
+* `SMTP_FROM`: Sender Identity header string (e.g., `"Pehlix Health" <noreply@pehlix.in>`)
 
 ### Microservices & Crons
 * `PDF_SERVICE_SECRET`: Shared secret between Next.js/QStash and PDF generation service

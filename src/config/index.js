@@ -49,6 +49,13 @@ export const config = {
   CRON_SECRET: process.env.CRON_SECRET,
   PDF_SERVICE_SECRET: process.env.PDF_SERVICE_SECRET,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+
+  // SMTP Settings
+  SMTP_HOST: process.env.SMTP_HOST,
+  SMTP_PORT: process.env.SMTP_PORT,
+  SMTP_USER: process.env.SMTP_USER,
+  SMTP_PASS: process.env.SMTP_PASS,
+  SMTP_FROM: process.env.SMTP_FROM,
 };
 
 export default config;

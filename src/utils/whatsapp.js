@@ -20,7 +20,8 @@ const TEMPLATE_VAR_MAP = {
   doctor_commission_statement: ['doctorName', 'month', 'totalReferrals', 'commissionAmount', 'statementLink', 'labName'],
   owner_daily_summary: ['ownerName', 'labName', 'date', 'patientCount', 'revenue', 'pendingAmount', 'reportCount', 'alerts'],
   trial_day_10: ['ownerName', 'patientsRegistered', 'reportsSent', 'planUpgradeLink'],
-  staff_device_alert: ['staffName', 'labName', 'loginTime', 'deviceInfo']
+  staff_device_alert: ['staffName', 'labName', 'loginTime', 'deviceInfo'],
+  auth_otp: ['otpCode']
 };
 
 /**
@@ -48,7 +49,8 @@ function compileSmsMessage(templateName, variables) {
     doctor_commission_statement: `Hi Dr ${doctorName}, your commission statement from ${labName} for ${variables.month || ''}. Referrals: ${variables.totalReferrals || 0}. Commission: ${variables.commissionAmount || 0}. Statement: ${variables.statementLink || ''}.`,
     owner_daily_summary: `${labName} — ${variables.date || ''}. Patients: ${variables.patientCount || 0}. Revenue: ${variables.revenue || 0}. Pending: ${variables.pendingAmount || 0}. Reports sent: ${variables.reportCount || 0}. Alerts: ${variables.alerts || ''}.`,
     trial_day_10: `Hi ${ownerName}, your Pehlix trial has 4 days remaining. You have registered ${variables.patientsRegistered || 0} patients and sent ${variables.reportsSent || 0} reports. Continue with full access: ${variables.planUpgradeLink || ''}.`,
-    staff_device_alert: `Alert: ${staffName} logged into ${labName} Pehlix account from a new device at ${variables.loginTime || ''}. Device: ${variables.deviceInfo || ''}. If this was not you, contact support immediately.`
+    staff_device_alert: `Alert: ${staffName} logged into ${labName} Pehlix account from a new device at ${variables.loginTime || ''}. Device: ${variables.deviceInfo || ''}. If this was not you, contact support immediately.`,
+    auth_otp: `Your Pehlix verification code is: ${variables.otpCode || ''}. This code is valid for 5 minutes.`
   };
 
   // Resolve template name or standard fallbacks

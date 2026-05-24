@@ -64,6 +64,7 @@ async function runTests() {
     role: 'doctor',
     name: `Dr. Test ${suffix}`,
     phone: doctorPhone,
+    email: `doctor_${suffix}@test.com`,
     labId: new mongoose.Types.ObjectId(),
     isActive: true
   });
@@ -86,6 +87,7 @@ async function runTests() {
     firstName: 'John',
     lastName: 'Doe',
     phone: patientPhone,
+    email: `patient_${suffix}@test.com`,
     age: 30,
     ageUnit: 'years',
     gender: 'male',
@@ -134,6 +136,9 @@ async function runTests() {
   // Cleanup test documents
   await User.deleteMany({ phone: { $in: [unregisteredPhone, patientPhone, doctorPhone] } });
   await Patient.deleteMany({ phone: { $in: [patientPhone] } });
+
+  console.log('Waiting for background dispatches to settle...');
+  await new Promise(r => setTimeout(r, 1500));
 
   console.log('\n====== ALL DECOUPLED OTP TESTS COMPLETED SUCCESSFULLY! ======\n');
   mongoose.connection.close();
