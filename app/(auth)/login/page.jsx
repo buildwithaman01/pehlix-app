@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Phone, ArrowRight, FlaskConical } from 'lucide-react';
+import PehlixLogo from '@/components/shared/PehlixLogo';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,12 +43,14 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-sm">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/10 backdrop-blur mb-4">
-            <FlaskConical className="w-7 h-7 text-[#5FB3A5]" />
+        <div className="text-center mb-8 flex flex-col items-center justify-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
+            <PehlixLogo variant="icon" className="w-16 h-16 shadow-lg" />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Pehlix</h1>
-          <p className="text-[#5FB3A5] text-sm mt-1 font-medium">Lab Management Platform</p>
+          <div className="flex justify-center items-center">
+            <PehlixLogo variant="wordmark" className="h-9 w-auto" light={true} />
+          </div>
+          <p className="text-[#5FB3A5] text-sm mt-2 font-medium tracking-wide">Lab Management Platform</p>
         </div>
 
         {/* Card */}

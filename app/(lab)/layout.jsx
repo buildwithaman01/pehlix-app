@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import PehlixLogo from '@/components/shared/PehlixLogo';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
@@ -38,7 +39,7 @@ export default function LabLayout({ children }) {
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex md:flex-col md:w-64 bg-emerald-deep text-white shrink-0">
         <div className="flex items-center h-16 px-6 border-b border-teal-soft/20">
-          <span className="text-xl font-bold tracking-wide text-teal-soft">Pehlix</span>
+          <PehlixLogo variant="wordmark" className="h-7 w-auto" light={true} />
         </div>
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
@@ -66,7 +67,7 @@ export default function LabLayout({ children }) {
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Mobile Header */}
         <header className="flex items-center justify-between h-16 px-6 bg-white border-b md:hidden shrink-0">
-          <span className="text-xl font-bold tracking-wide text-emerald-deep">Pehlix</span>
+          <PehlixLogo variant="wordmark" className="h-7 w-auto" light={false} />
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-1 rounded-md text-emerald-deep hover:bg-neutral-light focus:outline-none"
@@ -81,7 +82,7 @@ export default function LabLayout({ children }) {
             <div className="fixed inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} />
             <aside className="relative flex flex-col w-64 h-full bg-emerald-deep text-white p-6 space-y-6">
               <div className="flex items-center justify-between">
-                <span className="text-xl font-bold tracking-wide text-teal-soft">Pehlix</span>
+                <PehlixLogo variant="wordmark" className="h-7 w-auto" light={true} />
                 <button onClick={() => setMobileMenuOpen(false)} className="text-white">
                   <X className="w-6 h-6" />
                 </button>

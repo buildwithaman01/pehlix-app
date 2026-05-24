@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { FileText, User, LogOut, Menu, X } from 'lucide-react';
+import PehlixLogo from '@/components/shared/PehlixLogo';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -32,9 +33,9 @@ export default function PatientPortalLayout({ children }) {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center gap-2">
-              <span className="text-xl font-bold tracking-wide text-teal-300">Pehlix</span>
-              <span className="text-xs uppercase bg-white/20 px-2 py-0.5 rounded font-semibold tracking-wider text-emerald-100">
-                Patient Portal
+              <PehlixLogo variant="wordmark" className="h-6 w-auto" light={true} />
+              <span className="text-[10px] uppercase bg-white/10 text-[#5FB3A5] border border-white/15 px-1.5 py-0.5 rounded font-semibold tracking-wider font-satoshi">
+                Patient
               </span>
             </div>
 

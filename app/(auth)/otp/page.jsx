@@ -6,7 +6,8 @@ import { apiClient } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/stores/auth.store';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { ShieldCheck, ArrowLeft, FlaskConical, RefreshCw } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, RefreshCw } from 'lucide-react';
+import PehlixLogo from '@/components/shared/PehlixLogo';
 
 function OtpForm() {
   const router = useRouter();
@@ -104,11 +105,9 @@ function OtpForm() {
       </div>
 
       <div className="relative w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/10 backdrop-blur mb-4">
-            <FlaskConical className="w-7 h-7 text-[#5FB3A5]" />
-          </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Pehlix</h1>
+        <div className="flex flex-col items-center mb-8">
+          <PehlixLogo variant="icon" className="w-16 h-16 shadow-lg mb-3" />
+          <PehlixLogo variant="wordmark" className="h-9 w-auto" light={true} />
         </div>
 
         <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8">

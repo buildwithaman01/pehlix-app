@@ -98,7 +98,9 @@ export const AnalyticsService = {
       reportsSent,
       delayedReports,
       lowStockAlerts,
-      criticalValuesPending
+      criticalValuesPending,
+      revenueChart,
+      pendingPaymentsList
     ] = await Promise.all([
       // todayRevenue
       Invoice.aggregate([
@@ -126,7 +128,28 @@ export const AnalyticsService = {
       // lowStockAlerts
       InventoryItem.countDocuments({ labId: labIdObj, isDeleted: { $ne: true }, $expr: { $lte: ['$currentStock', '$minimumStock'] } }),
       // criticalValuesPending
-      Result.countDocuments({ labId: labIdObj, isCritical: true, criticalAcknowledgedAt: null, isDeleted: { $ne: true } })
+      Result.countDocuments({ labId: labIdObj, isCritical: true, criticalAcknowledgedAt: null, isDeleted: { $ne: true } }),
+      // revenueChart (last 7 days of daily revenue)
+      Invoice.aggregate([
+        { $match: { labId: labIdObj, paymentStatus: 'paid', createdAt: { $gte: lastWeekStart, $lte: todayEnd }, isDeleted: { $ne: true } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'Asia/Kolkata' } },
+            revenue: { $sum: '$totalAmount' }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]),
+      // pendingPaymentsList
+      Invoice.find({
+        labId: labIdObj,
+        paymentStatus: { $in: ['pending', 'partial'] },
+        isDeleted: { $ne: true }
+      })
+        .sort({ createdAt: 1 })
+        .limit(6)
+        .populate('patientId')
+        .populate('visitId', 'visitCode')
     ]);
 
     const amountToday = revenueTodayAgg[0]?.total || 0;
@@ -138,6 +161,18 @@ export const AnalyticsService = {
     const vsYesterday = patientsYesterday > 0
       ? parseFloat((((patientsToday - patientsYesterday) / patientsYesterday) * 100).toFixed(2))
       : (patientsToday > 0 ? 100 : 0);
+
+    const pendingList = (pendingPaymentsList || []).map(inv => {
+      const patient = inv.patientId || {};
+      const patientName = patient.firstName 
+        ? `${patient.firstName} ${patient.lastName || ''}`.trim() 
+        : 'Unknown Patient';
+      return {
+        patientName,
+        visitCode: inv.visitId?.visitCode || inv.invoiceCode,
+        balance: inv.balanceAmount !== undefined ? inv.balanceAmount : (inv.totalAmount - inv.amountPaid)
+      };
+    });
 
     return {
       todayRevenue: {
@@ -164,6 +199,8 @@ export const AnalyticsService = {
       criticalValuesPending: {
         count: criticalValuesPending
       },
+      revenueChart: revenueChart || [],
+      pendingPaymentsList: pendingList,
       generatedAt: new Date()
     };
   },

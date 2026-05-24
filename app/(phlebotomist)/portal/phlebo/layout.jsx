@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Calendar, LogOut, Navigation2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import PehlixLogo from '@/components/shared/PehlixLogo';
 
 export default function PhleboPortalLayout({ children }) {
   const pathname = usePathname();
@@ -23,9 +24,11 @@ export default function PhleboPortalLayout({ children }) {
       {/* Mobile Top Navbar */}
       <header className="sticky top-0 z-40 bg-gradient-to-r from-[#0F3D3E] to-[#186466] text-white shadow-md">
         <div className="px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <Navigation2 className="h-5 w-5 text-teal-300 rotate-45" />
-            <span className="text-lg font-bold tracking-wide text-teal-300">Pehlix Phlebo</span>
+          <div className="flex items-center gap-2">
+            <PehlixLogo variant="wordmark" className="h-6 w-auto" light={true} />
+            <span className="text-[10px] uppercase bg-white/10 text-[#5FB3A5] border border-white/15 px-1.5 py-0.5 rounded font-semibold tracking-wider font-satoshi">
+              Phlebo
+            </span>
           </div>
 
           <Button
