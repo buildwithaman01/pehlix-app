@@ -108,7 +108,7 @@ function OtpForm() {
         <div className="flex flex-col items-center mb-8">
           <PehlixLogo variant="icon" className="w-16 h-16 shadow-lg mb-3" />
           <PehlixLogo variant="wordmark" className="text-3xl" light={true} />
-
+          <p className="text-white/60 text-[10px] sm:text-xs mt-3 font-semibold tracking-wider font-satoshi uppercase">Digital Infrastructure for Modern Diagnostics</p>
         </div>
 
         <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8">

@@ -51,7 +51,8 @@ export default function LoginPage() {
             <PehlixLogo variant="wordmark" className="text-3xl" light={true} />
 
           </div>
-          <p className="text-[#5FB3A5] text-sm mt-2 font-medium tracking-wide">Lab Management Platform</p>
+          <p className="text-white/60 text-[10px] sm:text-xs mt-3 font-semibold tracking-wider font-satoshi uppercase">Digital Infrastructure for Modern Diagnostics</p>
+
         </div>
 
         {/* Card */}

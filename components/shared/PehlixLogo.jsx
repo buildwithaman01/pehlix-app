@@ -2,15 +2,22 @@ import React from 'react';
 
 export function PehlixWordmark({ className, light = false }) {
   const textColor = light ? 'text-white' : 'text-[#1E1E1E]';
+  const emeraldColor = light ? '#FFFFFF' : '#0F3D3E';
+  const tealColor = '#5FB3A5';
+
   return (
-    <span className={`font-satoshi font-extrabold tracking-wider inline-flex items-center ${textColor} ${className}`}>
+    <span className={`font-satoshi font-extrabold tracking-[0.06em] inline-flex items-center select-none ${textColor} ${className || ''}`}>
       <span>PEHLI</span>
-      <span className="inline-flex items-center ml-1 shrink-0" style={{ height: '0.85em', width: '0.85em' }}>
+      <span className="inline-flex items-center ml-1.5 shrink-0" style={{ height: '0.85em', width: '0.85em' }}>
         <svg viewBox="0 0 24 24" fill="none" className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
-          {/* Left chevron pointing right */}
-          <path d="M6 5 L11 12 L6 19" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
-          {/* Right chevron pointing left */}
-          <path d="M18 5 L13 12 L18 19" stroke="#5FB3A5" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Top-Left segment: dark emerald / white */}
+          <line x1="4.5" y1="4.5" x2="10" y2="10" stroke={emeraldColor} strokeWidth="3.8" strokeLinecap="butt" />
+          {/* Top-Right segment: dark emerald / white */}
+          <line x1="19.5" y1="4.5" x2="14" y2="10" stroke={emeraldColor} strokeWidth="3.8" strokeLinecap="butt" />
+          {/* Bottom-Left segment: soft teal */}
+          <line x1="4.5" y1="19.5" x2="10" y2="14" stroke={tealColor} strokeWidth="3.8" strokeLinecap="butt" />
+          {/* Bottom-Right segment: soft teal */}
+          <line x1="19.5" y1="19.5" x2="14" y2="14" stroke={tealColor} strokeWidth="3.8" strokeLinecap="butt" />
         </svg>
       </span>
     </span>
@@ -20,8 +27,15 @@ export function PehlixWordmark({ className, light = false }) {
 export function PehlixIcon({ className }) {
   return (
     <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Rounded Container Background in Deep Emerald */}
-      <rect width="100" height="100" rx="28" fill="#0F3D3E" />
+      <defs>
+        {/* Dark emerald to teal gradient background */}
+        <linearGradient id="pehlixIconBg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#0F3D3E" />
+          <stop offset="100%" stopColor="#1E5D5E" />
+        </linearGradient>
+      </defs>
+      {/* Rounded Container Background */}
+      <rect width="100" height="100" rx="28" fill="url(#pehlixIconBg)" />
       {/* Top P Loop in White */}
       <path d="M40 32 H62 C68 32, 68 48, 62 48 H40" stroke="#FFFFFF" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       {/* Vertical Stem - Three nodes layout */}
