@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Activity, Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import PehlixLogo from '@/components/shared/PehlixLogo';
 
 export default function MarketingLayout({ children }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -15,13 +16,9 @@ export default function MarketingLayout({ children }) {
           <div className="flex items-center justify-between h-16 sm:h-20">
             {/* Logo */}
             <div className="flex items-center gap-3">
-              <Link href="/" className="flex items-center gap-2 group">
-                <div className="p-2.5 bg-[#0F3D3E] text-white rounded-xl shadow-md group-hover:scale-105 transition-transform duration-300">
-                  <Activity className="h-6 w-6 text-[#5FB3A5] animate-pulse" />
-                </div>
-                <span className="text-2xl font-bold tracking-tight text-[#0F3D3E] hover:opacity-90 transition-opacity">
-                  Pehlix
-                </span>
+              <Link href="/" className="flex items-center gap-2.5 group">
+                <PehlixLogo variant="icon" className="w-10 h-10 shadow-md group-hover:scale-105 transition-transform duration-300 shrink-0" />
+                <PehlixLogo variant="wordmark" className="h-6.5 w-auto" light={false} />
               </Link>
             </div>
 
@@ -120,9 +117,9 @@ export default function MarketingLayout({ children }) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12">
             {/* Brand column */}
             <div className="space-y-4 md:col-span-2">
-              <div className="flex items-center gap-2">
-                <Activity className="h-6 w-6 text-[#5FB3A5]" />
-                <span className="text-xl font-bold tracking-tight">Pehlix</span>
+              <div className="flex items-center gap-2.5">
+                <PehlixLogo variant="icon" className="w-9 h-9 shadow-md shrink-0" />
+                <PehlixLogo variant="wordmark" className="h-5.5 w-auto" light={true} />
               </div>
               <p className="text-sm text-white/70 max-w-sm">
                 The modern diagnostic lab OS built from scratch for Tier 2 and Tier 3 Indian labs. Streamlining payments, registrations, doctor payouts, and patient communication.
