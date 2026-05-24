@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import AuthService from './auth.service.js';
 import User from '../staff/user.model.js';
+import Patient from '../patients/patient.model.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
 import { AppError } from '../../utils/errors.js';
 import { PERMISSIONS } from '../../config/permissions.js';
@@ -14,12 +15,16 @@ const AuthController = {
       const { phone } = req.body;
 
       const user = await User.findOne({ phone });
-      if (!user) {
-        throw new AppError('Access denied. OTP login is restricted to authorized roles.', 'AUTH_OTP_DENIED', 403);
-      }
-
-      if (user.role !== 'doctor' && user.role !== 'owner') {
-        throw new AppError('Access denied. OTP login is restricted to doctors and authorized users.', 'AUTH_OTP_DENIED', 403);
+      if (user) {
+        if (user.role !== 'doctor' && user.role !== 'owner' && user.role !== 'patient') {
+          throw new AppError('Access denied. OTP login is restricted to authorized roles.', 'AUTH_OTP_DENIED', 403);
+        }
+      } else {
+        // If user does not exist in DB, verify if they have any clinical Patient records on Pehlix
+        const patientExists = await Patient.exists({ phone, isDeleted: { $ne: true } });
+        if (!patientExists) {
+          throw new AppError('Access denied. Mobile number is not registered with any laboratory.', 'AUTH_OTP_DENIED', 403);
+        }
       }
 
       const otp = AuthService.generateOtp();
@@ -44,7 +49,7 @@ const AuthController = {
   },
 
   /**
-   * Verification of OTP. Restricted to doctors and owner roles.
+   * Verification of OTP. Restricted to doctors, owners, and registered patients.
    */
   async verifyOtp(req, res, next) {
     try {
@@ -52,10 +57,28 @@ const AuthController = {
 
       await AuthService.verifyOtp(phone, otp);
 
-      const user = await User.findOne({ phone });
+      let user = await User.findOne({ phone });
       
-      if (!user || (user.role !== 'doctor' && user.role !== 'owner')) {
-        throw new AppError('Access denied. User not authorized for OTP login.', 'AUTH_OTP_DENIED', 403);
+      if (user) {
+        if (user.role !== 'doctor' && user.role !== 'owner' && user.role !== 'patient') {
+          throw new AppError('Access denied. User not authorized for OTP login.', 'AUTH_OTP_DENIED', 403);
+        }
+      } else {
+        // Find most recent Patient record to resolve name and auto-provision the User record
+        const patientRecord = await Patient.findOne({ phone, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
+        if (!patientRecord) {
+          throw new AppError('Access denied. User not authorized for OTP login.', 'AUTH_OTP_DENIED', 403);
+        }
+
+        const patientName = `${patientRecord.firstName} ${patientRecord.lastName || ''}`.trim() || `Patient-${phone.slice(-4)}`;
+        user = await User.create({
+          role: 'patient',
+          name: patientName,
+          phone: phone,
+          labId: null, // Patients span multiple labs dynamically
+          isOtpOnly: true,
+          isActive: true
+        });
       }
 
       // Increment token version to invalidate previous sessions

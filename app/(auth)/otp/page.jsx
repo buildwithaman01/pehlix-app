@@ -68,6 +68,8 @@ function OtpForm() {
         router.push('/platform');
       } else if (user.role === 'doctor') {
         router.push('/portal/doctor/dashboard');
+      } else if (user.role === 'patient') {
+        router.push('/portal/patient/reports');
       } else {
         router.push('/dashboard');
       }
