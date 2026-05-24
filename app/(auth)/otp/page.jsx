@@ -13,6 +13,8 @@ function OtpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const phone = searchParams.get('phone') || '';
+  const email = searchParams.get('email') || '';
+  const mode = searchParams.get('mode') || '';
   const setUser = useAuthStore((s) => s.setUser);
 
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
@@ -60,17 +62,26 @@ function OtpForm() {
   async function verifyOtp(otpCode) {
     setLoading(true);
     try {
-      const res = await apiClient.post('/auth/verify-otp', { phone, otp: otpCode });
+      const payload = phone ? { phone, otp: otpCode } : { email, otp: otpCode };
+      const res = await apiClient.post('/auth/verify-otp', payload);
       const { user, accessToken } = res.data.data;
       setUser(user, accessToken);
       toast.success(`Welcome back, ${user.name || 'there'}!`);
       
+      // Redirect to set-password if they don't have a password set or are in reset mode
+      if (user.role !== 'patient' && (user.isOtpOnly || mode === 'reset')) {
+        router.push('/set-password');
+        return;
+      }
+
       if (user.role === 'superAdmin') {
         router.push('/platform');
       } else if (user.role === 'doctor') {
         router.push('/portal/doctor/dashboard');
       } else if (user.role === 'patient') {
         router.push('/portal/patient/reports');
+      } else if (user.role === 'phlebotomist') {
+        router.push('/portal/phlebo/jobs');
       } else {
         router.push('/dashboard');
       }
@@ -85,8 +96,9 @@ function OtpForm() {
 
   async function handleResend() {
     try {
-      await apiClient.post('/auth/send-otp', { phone });
-      toast.success('OTP resent to +91 ' + phone);
+      const payload = phone ? { phone } : { email };
+      await apiClient.post('/auth/send-otp', payload);
+      toast.success('OTP resent successfully');
       setResendCooldown(30);
       setDigits(['', '', '', '', '', '']);
       inputs.current[0]?.focus();
@@ -128,7 +140,7 @@ function OtpForm() {
             </div>
           </div>
           <p className="text-sm text-neutral-500 mb-6">
-            Enter the 6-digit code sent to <span className="font-semibold text-[#1E1E1E]">+91 {phone}</span>
+            Enter the 6-digit code sent via <span className="font-semibold text-[#1E1E1E]">{phone ? `WhatsApp to +91 ${phone}` : `Email to ${email}`}</span>
           </p>
 
           {/* OTP digit boxes */}

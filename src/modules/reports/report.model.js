@@ -65,6 +65,26 @@ const reportSchema = new mongoose.Schema({
   isDeleted: {
     type: Boolean,
     default: false
+  },
+  selectedNode: {
+    type: String,
+    trim: true
+  },
+  failedNodes: {
+    type: [String],
+    default: []
+  },
+  qstashMessageId: {
+    type: String,
+    trim: true
+  },
+  generationAttempts: {
+    type: Number,
+    default: 0
+  },
+  lastFailureReason: {
+    type: String,
+    trim: true
   }
 }, {
   timestamps: true

@@ -1,8 +1,10 @@
 import ReportService from '../reports/report.service.js';
 import Report from '../reports/report.model.js';
 import InAppNotification from '../notifications/inAppNotification.model.js';
+import PlatformAlert from '../analytics/alert.model.js';
 import WhatsAppService from '../../utils/whatsapp.js';
 import SmsService from '../../utils/sms.js';
+import PdfService from '../../utils/pdf.js';
 import { config } from '../../config/index.js';
 
 /**
@@ -55,7 +57,10 @@ export const pdfWebhookController = {
       if (!verifySecret(req, res)) return;
 
       const { url, body, error } = req.body;
-      console.error(`[PdfWebhook] DLQ Triggered for endpoint: ${url}. Error: ${error}`);
+      const failedNode = url;
+      const errorMessage = error || 'Unknown failure across all nodes';
+      
+      console.error(`[PdfWebhook] failureCallback triggered for endpoint: ${failedNode}. Error: ${errorMessage}`);
 
       // Decode the QStash body if base64 encoded
       let payload = body;
@@ -73,22 +78,23 @@ export const pdfWebhookController = {
       }
 
       if (!payload || !payload.reportId) {
-        console.error('[PdfWebhook] DLQ failure payload missing reportId');
+        console.error('[PdfWebhook] failureCallback payload missing reportId');
         return res.status(400).json({ error: 'Payload missing reportId' });
       }
 
-      const { reportId, visitId, labId } = payload;
+      const { reportId, labId } = payload;
       const report = await Report.findById(reportId)
         .populate('patientId')
         .populate('labId');
 
       if (!report) {
-        console.error(`[PdfWebhook] DLQ failed: Report not found in db: ${reportId}`);
+        console.error(`[PdfWebhook] failureCallback failed: Report not found in db: ${reportId}`);
         return res.status(404).json({ error: 'Report not found' });
       }
 
-      // 1. Update report status to failed
-      report.status = 'failed';
+      // Increment generationAttempts
+      report.generationAttempts = (report.generationAttempts || 0) + 1;
+      report.lastFailureReason = errorMessage;
       await report.save();
 
       const patientName = report.patientId 
@@ -97,39 +103,78 @@ export const pdfWebhookController = {
       const labName = report.labId?.name || 'Diagnostic Laboratory';
       const reportCode = report.reportCode;
 
-      // 2. Create in-app notification for the lab owner
-      await InAppNotification.create({
-        labId: report.labId?._id || labId,
-        title: 'Report Generation Failed',
-        message: `PDF generation failed for patient ${patientName} (Report Code: ${reportCode}). Please try regenerating manually from the dashboard.`
-      });
+      if (report.generationAttempts >= 3) {
+        // All nodes exhausted. Mark report status 'failed'.
+        report.status = 'failed';
+        await report.save();
 
-      // 3. Send WhatsApp alert to super admin (reusing staff_device_alert template to fit registered list)
-      const adminPhone = process.env.SUPER_ADMIN_PHONE || '9999999999';
-      const errorStr = error || 'Unknown failure across all nodes';
-      
-      try {
-        await WhatsAppService.send(adminPhone, 'staff_device_alert', {
-          staffName: 'Pehlix PDF Engine',
-          labName: labName,
-          loginTime: new Date().toISOString(),
-          deviceInfo: `DLQ failure for Patient: ${patientName}, Report: ${reportCode}, Visit: ${visitId || report.visitId}. Error: ${errorStr.substring(0, 100)}`
+        // Create PlatformAlert for super admin
+        await PlatformAlert.create({
+          labId: report.labId?._id || labId,
+          type: 'pdf_generation_failed',
+          message: `PDF generation failed after 3 attempts for report ${reportCode || reportId}. Reason: ${errorMessage}`
         });
-      } catch (wsErr) {
-        console.error('[PdfWebhook] Failed to send WhatsApp alert to super admin:', wsErr);
-      }
 
-      // 4. Send SMS fallback to super admin
-      try {
-        await SmsService.send(
-          adminPhone,
-          `ALERT: PDF generation failed for ${patientName} at ${labName}. Visit ID: ${visitId || report.visitId}, Report ID: ${reportId}. Error: ${errorStr.substring(0, 100)}`
-        );
-      } catch (smsErr) {
-        console.error('[PdfWebhook] Failed to send SMS alert to super admin:', smsErr);
-      }
+        // Create PlatformAlert for lab owner
+        await PlatformAlert.create({
+          labId: report.labId?._id || labId,
+          type: 'report_generation_failed',
+          message: `Report could not be generated for ${patientName} (${reportCode}). Please try regenerating from your dashboard.`
+        });
 
-      return res.status(200).json({ status: 'logged' });
+        console.error(`URGENT PDF FAILURE — reportId: ${reportId}, labId: ${labId}, all failed nodes: ${(report.failedNodes || []).join(', ')}`);
+
+        // Send WhatsApp alert to super admin
+        const adminPhone = process.env.SUPER_ADMIN_PHONE || '9999999999';
+        try {
+          await WhatsAppService.send(adminPhone, 'staff_device_alert', {
+            staffName: 'Pehlix PDF Engine',
+            labName: labName,
+            loginTime: new Date().toISOString(),
+            deviceInfo: `DLQ failure for Patient: ${patientName}, Report: ${reportCode}, Error: ${errorMessage.substring(0, 100)}`
+          });
+        } catch (wsErr) {
+          console.error('[PdfWebhook] Failed to send WhatsApp alert to super admin:', wsErr);
+        }
+
+        // Send SMS fallback to super admin
+        try {
+          await SmsService.send(
+            adminPhone,
+            `ALERT: PDF generation failed for ${patientName} at ${labName}. Report ID: ${reportId}. Error: ${errorMessage.substring(0, 100)}`
+          );
+        } catch (smsErr) {
+          console.error('[PdfWebhook] Failed to send SMS alert to super admin:', smsErr);
+        }
+
+        return res.status(200).json({ status: 'logged', action: 'marked_failed' });
+      } else {
+        // Try next node
+        const requeueRes = await PdfService.requeueToNextNode(reportId, failedNode);
+        if (requeueRes) {
+          console.log(`[PdfWebhook] Requeued report ${reportId} to node ${requeueRes.node}, attempt ${report.generationAttempts}`);
+          return res.status(200).json({ status: 'requeued', node: requeueRes.node, attempt: report.generationAttempts });
+        } else {
+          // If no node found, requeueToNextNode already marks report.status = 'failed'
+          // We should create alerts as well in this fallback scenario
+          report.status = 'failed';
+          await report.save();
+
+          await PlatformAlert.create({
+            labId: report.labId?._id || labId,
+            type: 'pdf_generation_failed',
+            message: `PDF generation failed: No fallback nodes available for report ${reportCode || reportId}.`
+          });
+
+          await PlatformAlert.create({
+            labId: report.labId?._id || labId,
+            type: 'report_generation_failed',
+            message: `Report could not be generated for ${patientName} (${reportCode}). No fallback nodes available.`
+          });
+
+          return res.status(200).json({ status: 'logged', action: 'failed_no_fallback' });
+        }
+      }
     } catch (error) {
       console.error('[PdfWebhook] Error in onPdfFailed callback:', error);
       next(error);

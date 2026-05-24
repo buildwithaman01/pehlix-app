@@ -21,5 +21,8 @@ router.post('/refresh', AuthController.refresh);
 // Log out endpoint (invalidates tokens via DB state check)
 router.post('/logout', authenticate, AuthController.logout);
 
+// Set or update password endpoint for authenticated users (after OTP verification or for profile changes)
+router.post('/set-password', authenticate, AuthController.setPassword);
+
 export default router;
 export { router as authRouter };

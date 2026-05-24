@@ -10,6 +10,7 @@ import WhatsAppService from '../../utils/whatsapp.js';
 import { AppError } from '../../utils/errors.js';
 import { config } from '../../config/index.js';
 import Razorpay from 'razorpay';
+import PlatformAlert from '../analytics/alert.model.js';
 
 // Helper to generate a unique 12-character uppercase alphanumeric code
 export function generateReportCode() {
@@ -57,32 +58,49 @@ export const ReportService = {
   /**
    * Triggers the PDF generation job via QStash.
    */
-  async triggerPdfGeneration(reportId) {
-    const report = await Report.findById(reportId);
+  async triggerPdfGeneration(reportOrId, visit = null) {
+    let report = reportOrId;
+    if (typeof reportOrId === 'string' || mongoose.Types.ObjectId.isValid(reportOrId)) {
+      report = await Report.findById(reportOrId);
+    }
     if (!report) {
       throw new AppError('Report not found', 'REPORT_NOT_FOUND', 404);
     }
 
-    report.status = 'generating';
-    await report.save();
-
-    // Fetch visit with populated tests to compute score
-    const visit = await Visit.findById(report.visitId).populate('tests');
+    if (!visit) {
+      visit = await Visit.findById(report.visitId).populate('tests');
+    }
     if (!visit) {
       throw new AppError('Visit not found for report', 'VISIT_NOT_FOUND', 404);
     }
 
-    const complexityScore = PdfService.calculateComplexityScore(visit);
-    
-    // Enqueue PDF generation job
-    const messageId = await PdfService.enqueuePdfJob(
+    // Check if there are any configured PDF nodes
+    const availableNodes = PdfService.getAvailableNodes();
+    if (availableNodes.length === 0) {
+      console.error(`[ReportService] PDF Generation failed: No PDF nodes configured in environment variables`);
+      
+      report.status = 'failed';
+      await report.save();
+
+      // Create PlatformAlert for both super admin and lab owner
+      await PlatformAlert.create({
+        labId: report.labId,
+        type: 'pdf_generation_failed',
+        message: `PDF generation failed: No PDF nodes configured. Report: ${report.reportCode}`
+      });
+
+      return { report, queued: false, reason: 'No PDF nodes configured', reportCode: report.reportCode };
+    }
+
+    // Proceed with enqueue
+    const enqueueRes = await PdfService.enqueuePdfJob(
       visit._id,
       visit.labId,
-      report._id,
-      complexityScore
+      report._id
     );
 
-    return { messageId, reportCode: report.reportCode };
+    const updatedReport = await Report.findById(report._id);
+    return { report: updatedReport, queued: true, messageId: enqueueRes.messageId, reportCode: updatedReport.reportCode };
   },
 
   /**

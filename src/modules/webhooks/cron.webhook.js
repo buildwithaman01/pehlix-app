@@ -9,6 +9,8 @@ import Lab from '../staff/lab.model.js';
 import User from '../staff/user.model.js';
 import WhatsAppService from '../../utils/whatsapp.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
+import Report from '../reports/report.model.js';
+import ReportService from '../reports/report.service.js';
 
 export const cronRouter = Router();
 
@@ -236,6 +238,48 @@ cronRouter.post('/low-stock-alerts', async (req, res) => {
     console.log(`[Cron] Low stock alerts sent to ${alertsSent} labs.`);
   } catch (error) {
     console.error('[Cron] Low stock alerts cron failed:', error);
+  }
+});
+
+/**
+ * POST /api/cron/pdf-watchdog
+ * Fires every 30 minutes to recover stuck reports.
+ * Validates CRON_SECRET middleware.
+ */
+cronRouter.post('/pdf-watchdog', async (req, res) => {
+  // Send 200 response immediately as requested
+  sendSuccess(res, { triggered: true }, 'PDF watchdog background processing triggered');
+
+  try {
+    console.log('[Cron] Starting PDF Watchdog Cron...');
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+
+    // Find reports stuck in 'pending' or 'generating' created > 30 mins ago
+    const stuckReports = await Report.find({
+      status: { $in: ['pending', 'generating'] },
+      createdAt: { $lt: thirtyMinutesAgo },
+      $or: [
+        { generationAttempts: { $lt: 3 } },
+        { generationAttempts: { $exists: false } }
+      ]
+    });
+
+    console.log(`[Cron] Watchdog found ${stuckReports.length} stuck reports.`);
+
+    let reQueuedCount = 0;
+    for (const report of stuckReports) {
+      try {
+        await ReportService.triggerPdfGeneration(report._id);
+        console.log(`[Cron] Watchdog re-queued stuck report ${report._id}`);
+        reQueuedCount++;
+      } catch (err) {
+        console.error(`[Cron] Watchdog failed to re-queue report ${report._id}:`, err);
+      }
+    }
+
+    console.log(`[Cron] PDF Watchdog Cron completed. Re-queued ${reQueuedCount} reports.`);
+  } catch (error) {
+    console.error('[Cron] PDF Watchdog Cron failed:', error);
   }
 });
 

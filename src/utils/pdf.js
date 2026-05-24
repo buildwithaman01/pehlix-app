@@ -1,5 +1,7 @@
 import { Client } from '@upstash/qstash';
 import { config } from '../config/index.js';
+import Report from '../modules/reports/report.model.js';
+import { AppError } from './errors.js';
 
 // Initialize QStash Client
 const qstashClient = new Client({
@@ -19,14 +21,53 @@ const qstashPublishJSON = async (options) => {
   return await qstashClient.publishJSON(options);
 };
 
+// Define endpoints list from environment variables
+const getNodes = () => {
+  const nodes = [
+    process.env.RENDER_PDF_ENDPOINT,
+    process.env.GCP_PDF_ENDPOINT,
+    process.env.RAILWAY_PDF_ENDPOINT
+  ].map(node => node ? node.trim() : null)
+   .filter(node => node && 
+                   node !== 'PLACEHOLDER_RENDER_URL' && 
+                   node !== 'PLACEHOLDER_GCP_URL' && 
+                   node !== 'PLACEHOLDER_RAILWAY_URL' &&
+                   !node.includes('PLACEHOLDER'));
+  return nodes;
+};
+
 export const PdfService = {
   /**
-   * Calculates the complexity score of a visit.
-   * Score formula:
-   *  - Number of tests * 5
-   *  - Plus number of total parameters across all tests
-   *  - Plus 20 if trend data exists for any test
-   *  - Plus 30 if NABL format required
+   * Returns list of configured nodes.
+   */
+  getAvailableNodes() {
+    return getNodes();
+  },
+
+  /**
+   * Selects a random node excluding specified ones.
+   */
+  selectNode(excludeNodes = []) {
+    const nodes = this.getAvailableNodes();
+    const cleanExcludes = excludeNodes.map(n => n.trim().toLowerCase());
+    
+    const remainingNodes = nodes.filter(node => {
+      const nodeLower = node.toLowerCase();
+      return !cleanExcludes.some(ex => 
+        nodeLower.includes(ex) || ex.includes(nodeLower)
+      );
+    });
+
+    if (remainingNodes.length === 0) {
+      return null;
+    }
+
+    const randomIndex = Math.floor(Math.random() * remainingNodes.length);
+    return remainingNodes[randomIndex];
+  },
+
+  /**
+   * Calculates the complexity score of a visit (kept for analytics).
    */
   calculateComplexityScore(visit) {
     const tests = visit.tests || [];
@@ -59,23 +100,15 @@ export const PdfService = {
   },
 
   /**
-   * Selects the correct endpoint based on complexity score.
-   */
-  selectPdfNode(complexityScore) {
-    if (complexityScore < 20) {
-      return process.env.FLYIO_PDF_ENDPOINT || 'https://pehlix-pdf.fly.dev/generate';
-    } else if (complexityScore <= 50) {
-      return process.env.GCP_PDF_ENDPOINT || 'https://pehlix-gcp-pdf.pehlix.in/generate';
-    } else {
-      return process.env.ORACLE_PDF_ENDPOINT || 'https://pehlix-oracle-pdf.pehlix.in/generate';
-    }
-  },
-
-  /**
    * Publishes QStash job to generate PDF.
    */
-  async enqueuePdfJob(visitId, labId, reportId, complexityScore) {
-    const endpoint = this.selectPdfNode(complexityScore);
+  async enqueuePdfJob(visitId, labId, reportId) {
+    const node = this.selectNode();
+    if (!node) {
+      console.error(`[PdfService] Failed to enqueue: No PDF nodes available`);
+      throw new AppError('No available PDF node configured', 'PDF_GENERATION_FAILED', 500);
+    }
+
     const payload = {
       visitId: visitId.toString(),
       labId: labId.toString(),
@@ -83,57 +116,64 @@ export const PdfService = {
       requestedAt: new Date().toISOString()
     };
 
-    console.log(`[PdfService] Enqueuing PDF job for report ${reportId} to endpoint: ${endpoint} (Score: ${complexityScore})`);
+    console.log(`[PdfService] Enqueuing PDF job for report ${reportId} to endpoint: ${node}`);
 
     const failureCallback = `${config.NEXT_PUBLIC_APP_URL}/api/internal/pdf/failed`;
 
-    // Publish to QStash
+    // Publish to QStash (90s timeout)
     const res = await qstashPublishJSON({
-      url: endpoint,
+      url: node,
       body: payload,
       headers: {
         'Authorization': `Bearer ${config.PDF_SERVICE_SECRET || process.env.PDF_SERVICE_SECRET}`
       },
       retries: 3,
+      timeout: 90,
       failureCallback
     });
 
-    return res.messageId;
+    // Update report record
+    await Report.findByIdAndUpdate(reportId, {
+      status: 'generating',
+      selectedNode: node,
+      qstashMessageId: res.messageId
+    });
+
+    return { messageId: res.messageId, node };
   },
 
   /**
    * Called when a node fails. Selects the next node and re-publishes.
    */
-  async requeueToNextNode(visitId, labId, reportId, failedEndpoint) {
-    const allNodes = [
-      process.env.FLYIO_PDF_ENDPOINT || 'https://pehlix-pdf.fly.dev/generate',
-      process.env.GCP_PDF_ENDPOINT || 'https://pehlix-gcp-pdf.pehlix.in/generate',
-      process.env.ORACLE_PDF_ENDPOINT || 'https://pehlix-oracle-pdf.pehlix.in/generate'
-    ];
-
-    const uniqueNodes = [...new Set(allNodes)].filter(Boolean);
-    const failedClean = failedEndpoint.trim().toLowerCase();
-
-    // Filter out the failed endpoint
-    const remainingNodes = uniqueNodes.filter(node => 
-      !node.toLowerCase().includes(failedClean) && 
-      !failedClean.includes(node.toLowerCase())
-    );
-
-    if (remainingNodes.length === 0) {
-      console.error(`[PdfService] Requeue failed: No other fallback nodes available.`);
-      throw new Error('No fallback nodes available');
+  async requeueToNextNode(reportId, failedNode) {
+    const report = await Report.findById(reportId);
+    if (!report) {
+      console.error(`[PdfService] Requeue failed: Report ${reportId} not found in database`);
+      return null;
     }
 
-    const nextNode = remainingNodes[0];
+    const failedNodes = report.failedNodes || [];
+    if (failedNode && !failedNodes.includes(failedNode)) {
+      failedNodes.push(failedNode);
+    }
+
+    const nextNode = this.selectNode(failedNodes);
+    if (!nextNode) {
+      console.warn(`[PdfService] Requeue failed for report ${reportId}: No other fallback nodes available.`);
+      report.status = 'failed';
+      report.failedNodes = failedNodes;
+      await report.save();
+      return null;
+    }
+
     const payload = {
-      visitId: visitId.toString(),
-      labId: labId.toString(),
-      reportId: reportId.toString(),
+      visitId: report.visitId.toString(),
+      labId: report.labId.toString(),
+      reportId: report._id.toString(),
       requestedAt: new Date().toISOString()
     };
 
-    console.log(`[PdfService] Node failed: ${failedEndpoint}. Re-queuing report ${reportId} to next node: ${nextNode}`);
+    console.log(`[PdfService] Node failed: ${failedNode}. Re-queuing report ${reportId} to next node: ${nextNode}`);
 
     const failureCallback = `${config.NEXT_PUBLIC_APP_URL}/api/internal/pdf/failed`;
 
@@ -144,10 +184,16 @@ export const PdfService = {
         'Authorization': `Bearer ${config.PDF_SERVICE_SECRET || process.env.PDF_SERVICE_SECRET}`
       },
       retries: 3,
+      timeout: 90,
       failureCallback
     });
 
-    return res.messageId;
+    report.selectedNode = nextNode;
+    report.failedNodes = failedNodes;
+    report.qstashMessageId = res.messageId;
+    await report.save();
+
+    return { messageId: res.messageId, node: nextNode };
   }
 };
 

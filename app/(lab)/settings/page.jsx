@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsApi } from '@/lib/api/extended.api';
+import { apiClient } from '@/lib/api/client';
 import PageHeader from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,12 +14,40 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
   Building2, Phone, Mail, MapPin, ShieldAlert, CreditCard,
-  Image as ImageIcon, Loader2, Sparkles, Check, Key
+  Image as ImageIcon, Loader2, Sparkles, Check, Key, Lock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function SettingsPage() {
   const qc = useQueryClient();
+
+  // Password change states
+  const [ownerPassword, setOwnerPassword] = useState('');
+  const [ownerConfirmPassword, setOwnerConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+
+  async function handleOwnerPasswordChange() {
+    if (ownerPassword.length < 6) {
+      toast.error('Password must be at least 6 characters long');
+      return;
+    }
+    if (ownerPassword !== ownerConfirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      await apiClient.post('/auth/set-password', { password: ownerPassword });
+      toast.success('Password updated successfully');
+      setOwnerPassword('');
+      setOwnerConfirmPassword('');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update password');
+    } finally {
+      setPasswordSaving(false);
+    }
+  }
+
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -238,6 +267,50 @@ export default function SettingsPage() {
                 <Label htmlFor="rp-secret">Razorpay Key Secret</Label>
                 <Input id="rp-secret" type="password" value={form.razorpayKeySecret} onChange={e => f('razorpayKeySecret')(e.target.value)} className="rounded-xl" placeholder="Secret Key" />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Account Security */}
+          <Card className="rounded-3xl border-neutral-200">
+            <CardHeader className="border-b border-neutral-100">
+              <CardTitle className="text-lg font-bold text-[#1E1E1E] flex items-center gap-2">
+                <Lock className="w-5 h-5 text-[#0F3D3E]" /> Account Security
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-4">
+              <p className="text-xs text-neutral-400 mb-2">
+                Update your account password for secure login without OTP.
+              </p>
+              <div className="space-y-1.5">
+                <Label htmlFor="sec-pass">New Password</Label>
+                <Input
+                  id="sec-pass"
+                  type="password"
+                  value={ownerPassword}
+                  onChange={e => setOwnerPassword(e.target.value)}
+                  className="rounded-xl"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sec-pass-confirm">Confirm Password</Label>
+                <Input
+                  id="sec-pass-confirm"
+                  type="password"
+                  value={ownerConfirmPassword}
+                  onChange={e => setOwnerConfirmPassword(e.target.value)}
+                  className="rounded-xl"
+                  placeholder="••••••••"
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={handleOwnerPasswordChange}
+                disabled={passwordSaving || !ownerPassword || !ownerConfirmPassword}
+                className="w-full mt-2 rounded-xl bg-neutral-800 hover:bg-neutral-900 text-white font-semibold text-xs py-2"
+              >
+                {passwordSaving ? 'Updating Password…' : 'Update Password'}
+              </Button>
             </CardContent>
           </Card>
 

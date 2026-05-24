@@ -14,51 +14,73 @@ const AuthController = {
    */
   async sendOtp(req, res, next) {
     try {
-      const { phone } = req.body;
+      const { phone, email } = req.body;
+      const targetIdentifier = phone || email;
 
-      const user = await User.findOne({ phone });
+      let user = null;
+      if (phone) {
+        user = await User.findOne({ phone });
+      } else if (email) {
+        user = await User.findOne({ email });
+      }
+
+      let patientRecord = null;
+      let patientExists = false;
       if (user) {
-        if (user.role !== 'doctor' && user.role !== 'owner' && user.role !== 'patient') {
+        const authorizedRoles = ['doctor', 'owner', 'patient', 'superAdmin'];
+        if (!authorizedRoles.includes(user.role)) {
           throw new AppError('Access denied. OTP login is restricted to authorized roles.', 'AUTH_OTP_DENIED', 403);
         }
       } else {
         // If user does not exist in DB, verify if they have any clinical Patient records on Pehlix
-        const patientExists = await Patient.exists({ phone, isDeleted: { $ne: true } });
+        if (phone) {
+          patientRecord = await Patient.findOne({ phone, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
+        } else if (email) {
+          patientRecord = await Patient.findOne({ email, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
+        }
+        patientExists = !!patientRecord;
         if (!patientExists) {
-          throw new AppError('Access denied. Mobile number is not registered with any laboratory.', 'AUTH_OTP_DENIED', 403);
+          throw new AppError('Access denied. Contact information is not registered with any laboratory.', 'AUTH_OTP_DENIED', 403);
         }
       }
 
       const otp = AuthService.generateOtp();
-      await AuthService.storeOtp(phone, otp);
+      await AuthService.storeOtp(targetIdentifier, otp);
 
       // Extract recipient's email address and name for personalized delivery
-      let email = null;
+      let recipientEmail = email || (user ? user.email : (patientRecord ? patientRecord.email : null));
+      let recipientPhone = phone || (user ? user.phone : (patientRecord ? patientRecord.phone : null));
       let patientName = 'User';
       if (user) {
-        email = user.email;
         patientName = user.name || 'User';
-      } else {
-        const patientRecord = await Patient.findOne({ phone, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
-        if (patientRecord) {
-          email = patientRecord.email;
-          patientName = `${patientRecord.firstName} ${patientRecord.lastName || ''}`.trim() || 'Patient';
+      } else if (patientRecord) {
+        patientName = `${patientRecord.firstName} ${patientRecord.lastName || ''}`.trim() || 'Patient';
+      }
+
+      // Resolve the role of the user (defaults to patient if no User record exists)
+      const role = user ? user.role : 'patient';
+
+      if (role === 'patient' || role === 'doctor') {
+        // Patients and doctors -> WhatsApp (if phone is available)
+        if (recipientPhone) {
+          WhatsAppService.send(recipientPhone, 'otp_verification', { otpCode: otp, patientName }).catch((err) => {
+            console.error(`[sendOtp] Failed to deliver WhatsApp to ${recipientPhone}:`, err);
+          });
+        } else if (recipientEmail) {
+          EmailService.sendOtp(recipientEmail, otp).catch((err) => {
+            console.error(`[sendOtp] Failed to deliver email to ${recipientEmail}:`, err);
+          });
+        }
+      } else if (role === 'owner' || role === 'superAdmin') {
+        // Owners and Super Admins -> Email ONLY
+        if (recipientEmail) {
+          EmailService.sendOtp(recipientEmail, otp).catch((err) => {
+            console.error(`[sendOtp] Failed to deliver email to ${recipientEmail}:`, err);
+          });
+        } else {
+          console.warn(`[sendOtp] No email registered for ${targetIdentifier}. Skipping email OTP.`);
         }
       }
-
-      // Dispatch OTP via Email asynchronously
-      if (email) {
-        EmailService.sendOtp(email, otp).catch((err) => {
-          console.error(`[sendOtp] Failed to deliver email to ${email}:`, err);
-        });
-      } else {
-        console.log(`[sendOtp] No email registered for phone ${phone}. Skipping email OTP.`);
-      }
-
-      // Dispatch OTP via WhatsApp asynchronously
-      WhatsAppService.send(phone, 'auth_otp', { otpCode: otp, patientName }).catch((err) => {
-        console.error(`[sendOtp] Failed to deliver WhatsApp to ${phone}:`, err);
-      });
 
       // Phone SMS OTP delivery is kept commented out in the codebase as a future fallback option
       /*
@@ -71,7 +93,7 @@ const AuthController = {
       */
 
       if (process.env.NODE_ENV !== 'production') {
-        console.log(`[DEVELOPMENT] OTP for ${phone} is: ${otp}`);
+        console.log(`[DEVELOPMENT] OTP for ${targetIdentifier} is: ${otp}`);
         return sendSuccess(res, { otp }, 'OTP sent successfully (Dev Mode)');
       }
 
@@ -86,28 +108,45 @@ const AuthController = {
    */
   async verifyOtp(req, res, next) {
     try {
-      const { phone, otp } = req.body;
+      const { phone, email, otp } = req.body;
+      const targetIdentifier = phone || email;
 
-      await AuthService.verifyOtp(phone, otp);
+      await AuthService.verifyOtp(targetIdentifier, otp);
 
-      let user = await User.findOne({ phone });
+      let user = null;
+      if (phone) {
+        user = await User.findOne({ phone });
+      } else if (email) {
+        user = await User.findOne({ email });
+      }
       
       if (user) {
-        if (user.role !== 'doctor' && user.role !== 'owner' && user.role !== 'patient') {
+        const authorizedRoles = ['doctor', 'owner', 'patient', 'superAdmin'];
+        if (!authorizedRoles.includes(user.role)) {
           throw new AppError('Access denied. User not authorized for OTP login.', 'AUTH_OTP_DENIED', 403);
         }
       } else {
         // Find most recent Patient record to resolve name and auto-provision the User record
-        const patientRecord = await Patient.findOne({ phone, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
+        let patientRecord = null;
+        if (phone) {
+          patientRecord = await Patient.findOne({ phone, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
+        } else if (email) {
+          patientRecord = await Patient.findOne({ email, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
+        }
+
         if (!patientRecord) {
           throw new AppError('Access denied. User not authorized for OTP login.', 'AUTH_OTP_DENIED', 403);
         }
 
-        const patientName = `${patientRecord.firstName} ${patientRecord.lastName || ''}`.trim() || `Patient-${phone.slice(-4)}`;
+        const patientPhone = phone || patientRecord.phone;
+        const patientEmail = email || patientRecord.email;
+        const patientName = `${patientRecord.firstName} ${patientRecord.lastName || ''}`.trim() || `Patient-${patientPhone ? patientPhone.slice(-4) : 'User'}`;
+        
         user = await User.create({
           role: 'patient',
           name: patientName,
-          phone: phone,
+          phone: patientPhone,
+          email: patientEmail,
           labId: null, // Patients span multiple labs dynamically
           isOtpOnly: true,
           isActive: true
@@ -253,6 +292,42 @@ const AuthController = {
 
       res.clearCookie('refreshToken');
       return sendSuccess(res, null, 'Logged out successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Set or change password for the authenticated user.
+   */
+  async setPassword(req, res, next) {
+    try {
+      const { password } = req.body;
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+      }
+
+      if (!password || password.length < 6) {
+        throw new AppError('Password must be at least 6 characters long', 'VALIDATION_FAILED', 400);
+      }
+
+      const user = await User.findById(userId);
+      if (!user) {
+        throw new AppError('User not found', 'USER_NOT_FOUND', 404);
+      }
+
+      if (user.role === 'patient') {
+        throw new AppError('Patients are not allowed to set passwords. OTP login only.', 'ACCESS_DENIED', 403);
+      }
+
+      const passwordHash = await bcrypt.hash(password, 10);
+      user.passwordHash = passwordHash;
+      user.isOtpOnly = false;
+      await user.save();
+
+      return sendSuccess(res, null, 'Password set successfully');
     } catch (error) {
       next(error);
     }

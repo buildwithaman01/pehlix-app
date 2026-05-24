@@ -3,14 +3,22 @@ import { sendError } from '../../utils/response.js';
 
 export const sendOtpSchema = z.object({
   body: z.object({
-    phone: z.string().length(10).regex(/^\d{10}$/, { message: 'Phone number must be exactly 10 digits' })
+    phone: z.string().length(10).regex(/^\d{10}$/, { message: 'Phone number must be exactly 10 digits' }).optional(),
+    email: z.string().email({ message: 'Invalid email address' }).optional()
+  }).refine((data) => data.phone || data.email, {
+    message: 'Either email or phone number is required',
+    path: ['phone']
   })
 });
 
 export const verifyOtpSchema = z.object({
   body: z.object({
-    phone: z.string().length(10).regex(/^\d{10}$/, { message: 'Phone number must be exactly 10 digits' }),
+    phone: z.string().length(10).regex(/^\d{10}$/, { message: 'Phone number must be exactly 10 digits' }).optional(),
+    email: z.string().email({ message: 'Invalid email address' }).optional(),
     otp: z.string().length(6).regex(/^\d{6}$/, { message: 'OTP must be exactly 6 digits' })
+  }).refine((data) => data.phone || data.email, {
+    message: 'Either email or phone number is required',
+    path: ['phone']
   })
 });
 

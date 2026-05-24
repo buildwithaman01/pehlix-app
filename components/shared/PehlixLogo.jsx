@@ -1,23 +1,22 @@
 import React from 'react';
 
 export function PehlixWordmark({ className, light = false }) {
-  const textColor = light ? 'text-white' : 'text-[#1E1E1E]';
-  const emeraldColor = light ? '#FFFFFF' : '#0F3D3E';
-  const tealColor = '#5FB3A5';
+  const textColor = light ? 'text-white' : 'text-[#0F3D3E]';
+  const xColor = light ? '#A8DDD5' : '#5FB3A5';
 
   return (
     <span className={`font-satoshi font-extrabold tracking-[0.06em] inline-flex items-center select-none ${textColor} ${className || ''}`}>
       <span>PEHLI</span>
-      <span className="inline-flex items-center ml-1.5 shrink-0" style={{ height: '0.85em', width: '0.85em' }}>
+      <span className="inline-flex items-center shrink-0" style={{ height: '1em', width: '0.9em', marginLeft: '0.02em' }}>
         <svg viewBox="0 0 24 24" fill="none" className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
-          {/* Top-Left segment: dark emerald / white */}
-          <line x1="4.5" y1="4.5" x2="10" y2="10" stroke={emeraldColor} strokeWidth="3.8" strokeLinecap="butt" />
-          {/* Top-Right segment: dark emerald / white */}
-          <line x1="19.5" y1="4.5" x2="14" y2="10" stroke={emeraldColor} strokeWidth="3.8" strokeLinecap="butt" />
-          {/* Bottom-Left segment: soft teal */}
-          <line x1="4.5" y1="19.5" x2="10" y2="14" stroke={tealColor} strokeWidth="3.8" strokeLinecap="butt" />
-          {/* Bottom-Right segment: soft teal */}
-          <line x1="19.5" y1="19.5" x2="14" y2="14" stroke={tealColor} strokeWidth="3.8" strokeLinecap="butt" />
+          {/* Top-Left segment */}
+          <line x1="3" y1="3" x2="10.5" y2="10.5" stroke={xColor} strokeWidth="4.5" strokeLinecap="butt" />
+          {/* Top-Right segment */}
+          <line x1="21" y1="3" x2="13.5" y2="10.5" stroke={xColor} strokeWidth="4.5" strokeLinecap="butt" />
+          {/* Bottom-Left segment */}
+          <line x1="3" y1="21" x2="10.5" y2="13.5" stroke={xColor} strokeWidth="4.5" strokeLinecap="butt" />
+          {/* Bottom-Right segment */}
+          <line x1="21" y1="21" x2="13.5" y2="13.5" stroke={xColor} strokeWidth="4.5" strokeLinecap="butt" />
         </svg>
       </span>
     </span>
