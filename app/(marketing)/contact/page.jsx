@@ -58,7 +58,8 @@ export default function ContactPage() {
                     <p className="text-xs text-white/50 font-medium uppercase tracking-wider">Office Address</p>
                     <p className="text-sm font-semibold leading-relaxed mt-1 text-white/90">
                       Pehchanly Digital Solutions<br />
-                      Ground Floor, 12 Exhibition Road,<br />
+                      3rd Floor, Banke Bihari Kunj,<br />
+                      Mithapur, Block A, Area B,<br />
                       Patna, Bihar, 800001, India
                     </p>
                   </div>
@@ -71,8 +72,8 @@ export default function ContactPage() {
                   <div>
                     <p className="text-xs text-white/50 font-medium uppercase tracking-wider">Email Address</p>
                     <p className="text-sm font-semibold leading-relaxed mt-1 text-white/90">
-                      <a href="mailto:support@pehlix.in" className="hover:text-[#5FB3A5] transition-colors">support@pehlix.in</a>
-                      <span className="block text-[10px] text-white/40 mt-0.5">For queries: hello@pehlix.in</span>
+                      <a href="mailto:contact@pehchanly.com" className="hover:text-[#5FB3A5] transition-colors">contact@pehchanly.com</a>
+                      <span className="block text-[10px] text-white/40 mt-0.5">For queries: hello.pehlix@gmail.com</span>
                     </p>
                   </div>
                 </div>
@@ -84,7 +85,7 @@ export default function ContactPage() {
                   <div>
                     <p className="text-xs text-white/50 font-medium uppercase tracking-wider">Contact Number</p>
                     <p className="text-sm font-semibold leading-relaxed mt-1 text-white/90">
-                      <a href="tel:+919900000000" className="hover:text-[#5FB3A5] transition-colors">+91 99000 00000</a>
+                      <a href="tel:+918521264242" className="hover:text-[#5FB3A5] transition-colors">+91 85212 64242</a>
                       <span className="block text-[10px] text-white/40 mt-0.5">Monday to Saturday, 9 AM - 6 PM</span>
                     </p>
                   </div>

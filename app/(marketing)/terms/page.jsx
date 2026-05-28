@@ -92,7 +92,7 @@ export default function TermsOfServicePage() {
               These Terms are governed by and construed in accordance with the laws of India. Any disputes arising out of these Terms shall be subject to the exclusive jurisdiction of the courts located in Patna, Bihar, India.
             </p>
             <p>
-              For legal inquiries or terms clarification, contact our compliance desk at <a href="mailto:support@pehlix.in" className="text-[#0F3D3E] font-semibold hover:underline">support@pehlix.in</a>.
+              For legal inquiries or terms clarification, contact our compliance desk at <a href="mailto:contact@pehchanly.com" className="text-[#0F3D3E] font-semibold hover:underline">contact@pehchanly.com</a>.
             </p>
           </div>
         </div>

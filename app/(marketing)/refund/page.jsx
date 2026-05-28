@@ -82,7 +82,7 @@ export default function RefundPolicyPage() {
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-[#1E1E1E]">4. Support Desk</h2>
             <p>
-              For any billing inquiries, payment disputes, or subscription cancellation assistance, please contact our billing support desk at <a href="mailto:support@pehlix.in" className="text-[#0F3D3E] font-semibold hover:underline">support@pehlix.in</a>.
+              For any billing inquiries, payment disputes, or subscription cancellation assistance, please contact our billing support desk at <a href="mailto:contact@pehchanly.com" className="text-[#0F3D3E] font-semibold hover:underline">contact@pehchanly.com</a>.
             </p>
           </div>
         </div>
