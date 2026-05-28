@@ -105,8 +105,13 @@ Implemented random load-balanced selection & intelligent failover queueing in th
   * Added a dedicated "Account Security" card inside the lab owner settings screen [settings/page.jsx](file:///m:/pehlix/pehlix-app/app/(lab)/settings/page.jsx) for manual password updates.
 * **Validation**:
   * Created test script `scratch/test_password_and_email_otp.js` verifying the email OTP, password setup, and email/password login flows. Verified all 5 decoupled test cases pass.
-  * Next.js production compilation completed successfully.
+  * Next.js production compilation completed successfully.---
 
-
-
-
+## 12. Razorpay Payment Gateway Compliance Integration
+* **Legal Compliance Pages**: Created standard compliance pages required by Razorpay merchant review:
+  * **Contact Us** ([contact/page.jsx](file:///m:/pehlix/pehlix-app/app/(marketing)/contact/page.jsx)): Features a contact form and lists the official address (*Pehchanly Digital Solutions, 12 Exhibition Road, Patna, Bihar, 800001, India*), support email (`support@pehlix.in`), and telephone support hours.
+  * **Privacy Policy** ([privacy/page.jsx](file:///m:/pehlix/pehlix-app/app/(marketing)/privacy/page.jsx)): Details encryption standards, data cookies, data localization (AWS Mumbai region), and DPDP Act 2023 compliance.
+  * **Terms of Service** ([terms/page.jsx](file:///m:/pehlix/pehlix-app/app/(marketing)/terms/page.jsx)): Specifies the SaaS license terms, medical diagnostic disclaimers (pathologist controllership), and user indemnity.
+  * **Refund & Cancellation Policy** ([refund/page.jsx](file:///m:/pehlix/pehlix-app/app/(marketing)/refund/page.jsx)): Explains the 14-day free trial, monthly/annual subscription parameters, and cancellation flows.
+* **Footer Navigation Integration**: Modified the main marketing layout ([layout.jsx](file:///m:/pehlix/pehlix-app/app/(marketing)/layout.jsx)) to link all four compliance pages under a new "Support & Legal" footer section.
+* **Static Generation Build**: Validated the changes using Next.js build compilation (`npm run build`). All compliance pages were compiled as pre-rendered static routes (`○ (Static)`), ensuring fast loads and SEO compliance.
