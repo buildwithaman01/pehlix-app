@@ -67,13 +67,13 @@ export async function authenticateSuperAdmin(req, res, next) {
     }
 
     const token = authHeader.split(' ')[1];
-    const secret = process.env.JWT_SUPER_ADMIN_SECRET;
+    const publicKey = (process.env.JWT_ACCESS_PUBLIC_KEY || '').replace(/\\n/g, '\n');
 
-    if (!secret) {
-      return sendError(res, 'AUTH_TOKEN_INVALID', 'Super Admin Secret is not configured', {}, 401);
+    if (!publicKey) {
+      return sendError(res, 'AUTH_TOKEN_INVALID', 'JWT public key configuration is missing', {}, 401);
     }
 
-    const decoded = jwt.verify(token, secret);
+    const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] });
 
     if (decoded.role !== 'superAdmin') {
       return sendError(res, 'AUTH_INSUFFICIENT_PERMISSIONS', 'Forbidden: Super Admin access required', {}, 403);
