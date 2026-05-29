@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 
 export function proxy(request) {
-  const url = request.nextUrl.clone();
-  const host = request.headers.get('host') || '';
-  const { pathname } = url;
+  const hostname = request.nextUrl.hostname;
+  const { pathname, search } = request.nextUrl;
 
   // Let Next.js internal requests, static assets, and API routes pass through
   if (
@@ -16,36 +15,35 @@ export function proxy(request) {
   }
 
   // Skip redirects during local development
-  const isLocalDev = host.includes('localhost') || host.includes('127.0.0.1') || host.includes('::1');
+  const isLocalDev = hostname.includes('localhost') || hostname.includes('127.0.0.1') || hostname.includes('::1');
   if (isLocalDev) {
     return NextResponse.next();
   }
 
   // 1. Handle app.pehlix.in (and admin.pehlix.in)
-  if (host.includes('app.pehlix.in') || host.includes('admin.pehlix.in')) {
-    // If root path on app subdomain, redirect to login
+  if (hostname.includes('app.pehlix.in') || hostname.includes('admin.pehlix.in')) {
+    // If root path on app subdomain, redirect to login (domain-safe!)
     if (pathname === '/') {
-      url.pathname = '/login';
-      return NextResponse.redirect(url);
+      return NextResponse.redirect(new URL('/login', request.url));
     }
     
     // Redirect marketing paths on app subdomain to the main marketing site
     const marketingPaths = ['/about', '/pricing', '/contact', '/refund', '/terms', '/privacy'];
     if (marketingPaths.some(path => pathname.startsWith(path))) {
-      return NextResponse.redirect(`https://pehlix.in${pathname}${url.search}`);
+      return NextResponse.redirect(`https://pehlix.in${pathname}${search}`);
     }
   }
 
   // 2. Handle verify.pehlix.in
-  if (host.includes('verify.pehlix.in')) {
+  if (hostname.includes('verify.pehlix.in')) {
     // verify.pehlix.in is only for verification path /r/[id]
     if (!pathname.startsWith('/r/')) {
-      return NextResponse.redirect(`https://pehlix.in${pathname}${url.search}`);
+      return NextResponse.redirect(`https://pehlix.in${pathname}${search}`);
     }
   }
 
   // 3. Handle root domain pehlix.in (and www.pehlix.in)
-  if (host === 'pehlix.in' || host === 'www.pehlix.in') {
+  if (hostname === 'pehlix.in' || hostname === 'www.pehlix.in') {
     // Redirect app-specific paths on marketing domain to the app subdomain
     const appPaths = [
       '/login',
@@ -66,7 +64,7 @@ export function proxy(request) {
       '/inventory'
     ];
     if (appPaths.some(path => pathname.startsWith(path))) {
-      return NextResponse.redirect(`https://app.pehlix.in${pathname}${url.search}`);
+      return NextResponse.redirect(`https://app.pehlix.in${pathname}${search}`);
     }
   }
 
