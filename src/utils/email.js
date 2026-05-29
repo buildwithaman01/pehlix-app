@@ -36,7 +36,7 @@ export const EmailService = {
       const response = await axios.post(
         'https://api.resend.com/emails',
         {
-          from: config.SMTP_FROM || 'Pehlix Health <onboarding@resend.dev>',
+          from: config.SMTP_FROM || 'Pehlix Health <noreply@pehlix.in>',
           to: [to],
           subject,
           html: html || text,
