@@ -63,7 +63,8 @@ export default function LoginPage() {
         router.push(`/otp?phone=${payload.phone}`);
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to send OTP');
+      const msg = err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to send OTP';
+      toast.error(msg);
     } finally {
       setLoadingOtp(false);
     }
@@ -94,7 +95,8 @@ export default function LoginPage() {
         router.push('/dashboard');
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Invalid email or password');
+      const msg = err?.response?.data?.error?.message || err?.response?.data?.message || 'Invalid email or password';
+      toast.error(msg);
     } finally {
       setLoadingPass(false);
     }
