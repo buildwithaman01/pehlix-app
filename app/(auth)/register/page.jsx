@@ -58,11 +58,12 @@ export default function RegisterPage() {
       await apiClient.post('/auth/register-lab', payload);
       toast.success('Laboratory registered successfully!');
 
-      // 2. Automatically dispatch OTP to the newly registered phone number
+      // 2. Automatically dispatch OTP to the newly registered email
       try {
-        await apiClient.post('/auth/send-otp', { phone: cleanedPhone });
-        toast.success(`OTP code dispatched to +91 ${cleanedPhone}`);
-        router.push(`/otp?phone=${cleanedPhone}`);
+        const lowerEmail = ownerEmail.trim().toLowerCase();
+        await apiClient.post('/auth/send-otp', { email: lowerEmail });
+        toast.success(`OTP code dispatched to ${lowerEmail}`);
+        router.push(`/otp?email=${encodeURIComponent(lowerEmail)}`);
       } catch (otpErr) {
         console.error('Failed to trigger auto-OTP:', otpErr);
         toast.info('Please request an OTP manually to verify your account.');

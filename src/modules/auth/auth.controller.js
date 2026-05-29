@@ -49,6 +49,9 @@ const AuthController = {
 
       const otp = AuthService.generateOtp();
       await AuthService.storeOtp(targetIdentifier, otp);
+      
+      // Log generated OTP to console for easy staging/sandbox access
+      console.log(`[OTP_LOG] Generated OTP for ${targetIdentifier}: ${otp}`);
 
       // Extract recipient's email address and name for personalized delivery
       let recipientEmail = email || (user ? user.email : (patientRecord ? patientRecord.email : null));
