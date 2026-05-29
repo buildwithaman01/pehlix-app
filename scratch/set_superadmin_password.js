@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { connectDB } from '../src/utils/db.js';
 import User from '../src/modules/staff/user.model.js';
+import { calculateBlindIndex } from '../src/utils/crypto.js';
 
 async function setSuperAdminPassword() {
   const email = 'admin@pehlix.in';
@@ -13,6 +14,7 @@ async function setSuperAdminPassword() {
     await connectDB();
 
     console.log(`Locating superAdmin user with email: ${email}...`);
+    // Find directly by role to bypass blind index checks
     const superAdmin = await User.findOne({ role: 'superAdmin' });
 
     if (!superAdmin) {
@@ -30,6 +32,10 @@ async function setSuperAdminPassword() {
     superAdmin.passwordHash = hashedPassword;
     superAdmin.isOtpOnly = false;
     superAdmin.isActive = true;
+    
+    // Explicitly compute and store blind indexes
+    superAdmin.emailBlindIndex = calculateBlindIndex(email, 'email');
+    superAdmin.phoneBlindIndex = calculateBlindIndex('9999999999', 'phone');
     
     await superAdmin.save();
     console.log('✔ Successfully updated superAdmin credentials!');
