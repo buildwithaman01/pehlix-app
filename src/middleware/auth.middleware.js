@@ -44,7 +44,10 @@ export async function authenticate(req, res, next) {
 export async function authenticateSuperAdmin(req, res, next) {
   try {
     // 1. IP Whitelist Verification
-    let clientIp = req.ip || req.socket.remoteAddress || '';
+    let clientIp = req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || '';
+    if (clientIp.includes(',')) {
+      clientIp = clientIp.split(',')[0].trim();
+    }
     if (clientIp === '::1' || clientIp === '::ffff:127.0.0.1') {
       clientIp = '127.0.0.1';
     }
@@ -53,7 +56,8 @@ export async function authenticateSuperAdmin(req, res, next) {
     const whitelist = whitelistEnv.split(',').map(ip => ip.trim()).filter(Boolean);
 
     if (whitelist.length > 0 && !whitelist.includes(clientIp)) {
-      return sendError(res, 'AUTH_INSUFFICIENT_PERMISSIONS', 'Forbidden: client IP not whitelisted', {}, 403);
+      console.log(`[SuperAdminAuth IP check] Blocked IP: "${clientIp}"`);
+      return sendError(res, 'AUTH_INSUFFICIENT_PERMISSIONS', `Forbidden: client IP not whitelisted (${clientIp})`, {}, 403);
     }
 
     // 2. Token Authentication
