@@ -14,7 +14,8 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
   Building2, Phone, Mail, MapPin, ShieldAlert, CreditCard,
-  Image as ImageIcon, Loader2, Sparkles, Check, Key, Lock
+  Image as ImageIcon, Loader2, Sparkles, Check, Key, Lock,
+  MessageCircle, AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -59,7 +60,10 @@ export default function SettingsPage() {
     nablNumber: '',
     gstNumber: '',
     razorpayKeyId: '',
-    razorpayKeySecret: ''
+    razorpayKeySecret: '',
+    communicationMode: 'waMe',
+    paymentCheckMode: 'pendingOnly',
+    showWhatsAppOnResultEntry: true
   });
 
   const { data: settingsData, isLoading } = useQuery({
@@ -80,7 +84,10 @@ export default function SettingsPage() {
         nablNumber: settingsData.nablNumber || '',
         gstNumber: settingsData.gstNumber || '',
         razorpayKeyId: settingsData.razorpayKeyId || '',
-        razorpayKeySecret: settingsData.razorpayKeySecret || ''
+        razorpayKeySecret: settingsData.razorpayKeySecret || '',
+        communicationMode: settingsData.planConfig?.features?.communicationMode || 'waMe',
+        paymentCheckMode: settingsData.planConfig?.features?.paymentCheckMode || 'pendingOnly',
+        showWhatsAppOnResultEntry: settingsData.planConfig?.features?.showWhatsAppOnResultEntry !== false
       });
     }
   }, [settingsData]);
@@ -242,6 +249,82 @@ export default function SettingsPage() {
                   )}
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Communication & Messaging Settings */}
+          <Card className="rounded-3xl border-neutral-200">
+            <CardHeader className="border-b border-neutral-100">
+              <CardTitle className="text-lg font-bold text-[#1E1E1E] flex items-center gap-2">
+                <MessageCircle className="w-5 h-5 text-[#25D366]" /> Communication Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Communication Mode Selector */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="comm-mode">Communication Channel Mode</Label>
+                  <select
+                    id="comm-mode"
+                    value={form.communicationMode}
+                    onChange={e => f('communicationMode')(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl border border-neutral-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/25 transition-all duration-200"
+                  >
+                    <option value="waMe">Manual WhatsApp Links (wa.me)</option>
+                    <option value="metaApi">Automated WhatsApp (Meta API)</option>
+                  </select>
+                  <p className="text-[10px] text-neutral-400">
+                    Choose whether reports are sent via receptionist-clicked manual links or fully automated delivery.
+                  </p>
+                </div>
+
+                {/* Payment Check Mode Selector */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="pay-check">Payment Verification Rule</Label>
+                  <select
+                    id="pay-check"
+                    value={form.paymentCheckMode}
+                    onChange={e => f('paymentCheckMode')(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl border border-neutral-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/25 transition-all duration-200"
+                  >
+                    <option value="always">Always block if unpaid (strict verification)</option>
+                    <option value="pendingOnly">Only block if patient has balance pending</option>
+                    <option value="never">Never block (send reports regardless of payment)</option>
+                  </select>
+                  <p className="text-[10px] text-neutral-400">
+                    Controls whether a patient's pending invoice balance blocks report delivery or forces payment link.
+                  </p>
+                </div>
+              </div>
+
+              {/* Toggle show whatsapp logo in Result Entry work list */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-neutral-50/60 border border-neutral-100 mt-2">
+                <div className="space-y-0.5 max-w-[85%]">
+                  <Label htmlFor="toggle-logo" className="font-bold text-xs text-[#1E1E1E] cursor-pointer">Show WhatsApp Link on Result Entry</Label>
+                  <p className="text-[10px] text-neutral-400">
+                    Enables a WhatsApp quick-share shortcut icon next to patients in the pathologist/technician results worklist.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  id="toggle-logo"
+                  checked={form.showWhatsAppOnResultEntry}
+                  onChange={e => f('showWhatsAppOnResultEntry')(e.target.checked)}
+                  className="w-4.5 h-4.5 accent-emerald-deep cursor-pointer"
+                />
+              </div>
+
+              {/* Warning Alert Banner for Meta Transition */}
+              {form.communicationMode === 'metaApi' && settingsData?.planConfig?.features?.communicationMode !== 'metaApi' && (
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-800 space-y-1 mt-2 animate-fade-in">
+                  <p className="font-bold flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5" /> Auto-Delivery Confirmation
+                  </p>
+                  <p>
+                    Switching to Automated (Meta API) will trigger a background job to automatically deliver all <strong>Ready</strong> outbox reports via Meta Cloud API upon saving.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

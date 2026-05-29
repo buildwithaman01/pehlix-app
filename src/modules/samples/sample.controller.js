@@ -27,11 +27,11 @@ export const SampleController = {
   async updateSampleStatus(req, res, next) {
     try {
       const { id } = req.params;
-      const { status, notes } = req.body;
+      const { status, notes, storageLocation } = req.body;
       const labId = req.user.labId;
-      const userId = req.user._id;
+      const userId = req.user.userId || req.user._id;
 
-      const updatedSample = await SampleService.updateSampleStatus(labId, id, status, userId, notes);
+      const updatedSample = await SampleService.updateSampleStatus(labId, id, status, userId, notes, storageLocation);
 
       return sendSuccess(res, updatedSample, `Sample status updated to ${status}`);
     } catch (error) {
@@ -47,7 +47,7 @@ export const SampleController = {
       const { id } = req.params;
       const { rejectionReason } = req.body;
       const labId = req.user.labId;
-      const userId = req.user._id;
+      const userId = req.user.userId || req.user._id;
 
       const sample = await SampleService.rejectSample(labId, id, rejectionReason, userId);
 
@@ -86,6 +86,28 @@ export const SampleController = {
       const samples = await SampleService.getPendingSamples(labId);
 
       return sendSuccess(res, samples, 'Pending samples retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Retrieve chain of custody events for a sample
+   */
+  async getSampleChain(req, res, next) {
+    try {
+      const { id } = req.params;
+      const labId = req.user.labId;
+
+      const SampleModel = mongoose.model('Sample');
+      const sample = await SampleModel.findOne({ _id: id, labId, isDeleted: { $ne: true } })
+        .populate('chainOfCustody.performedBy', 'name role');
+
+      if (!sample) {
+        throw new AppError('Sample not found', 'VISIT_NOT_FOUND', 404);
+      }
+
+      return sendSuccess(res, sample.chainOfCustody, 'Chain of custody retrieved successfully');
     } catch (error) {
       next(error);
     }

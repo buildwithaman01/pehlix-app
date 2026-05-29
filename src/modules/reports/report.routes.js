@@ -62,4 +62,11 @@ router.post(
   ReportController.generateShareLink
 );
 
+// Phase 3.6 — Report Amendment
+router.post(
+  '/:id/amend',
+  authorize('owner', 'pathologist'),
+  ReportController.amendReport
+);
+
 export default router;

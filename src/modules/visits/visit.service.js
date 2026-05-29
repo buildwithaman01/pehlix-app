@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Visit from './visit.model.js';
 import Invoice from '../billing/invoice.model.js';
 import LabTest from '../staff/labTest.model.js';
@@ -131,27 +132,71 @@ export const VisitService = {
   /**
    * Retrieves visits by labId, with optional status filter and paginated results.
    */
-  async getVisits(labId, filters = {}, page = 1, limit = 10) {
+  async getVisits(labId, filters = {}, page = 1, limit = 10, cursor = null) {
     const query = { labId };
     
     if (filters.status) {
       query.status = filters.status;
     }
-    
-    const total = await Visit.countDocuments(query);
-    const visits = await Visit.find(query)
-      .populate('patientId', 'firstName lastName phone')
-      .populate('invoiceId')
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .sort({ createdAt: -1 });
+
+    let visits;
+    let hasNextPage = false;
+    let nextCursor = null;
+
+    if (cursor !== null) {
+      if (cursor) {
+        try {
+          const decoded = Buffer.from(cursor, 'base64').toString('utf8');
+          const parts = decoded.split('_');
+          if (parts.length === 2) {
+            const cursorDate = new Date(parts[0]);
+            const cursorId = parts[1];
+            query.$or = [
+              { createdAt: { $lt: cursorDate } },
+              { createdAt: cursorDate, _id: { $lt: new mongoose.Types.ObjectId(cursorId) } }
+            ];
+          }
+        } catch (err) {
+          console.error('[VisitService] Failed to parse cursor, falling back to all records:', err);
+        }
+      }
+
+      visits = await Visit.find(query)
+        .populate('patientId', 'firstName lastName phone')
+        .populate('invoiceId')
+        .sort({ createdAt: -1, _id: -1 })
+        .limit(limit + 1);
+
+      if (visits.length > limit) {
+        hasNextPage = true;
+        const lastItem = visits[limit - 1];
+        nextCursor = Buffer.from(`${lastItem.createdAt.toISOString()}_${lastItem._id.toString()}`).toString('base64');
+        visits = visits.slice(0, limit);
+      }
+    } else {
+      const total = await Visit.countDocuments(query);
+      visits = await Visit.find(query)
+        .populate('patientId', 'firstName lastName phone')
+        .populate('invoiceId')
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .sort({ createdAt: -1, _id: -1 });
+
+      const totalPages = Math.ceil(total / limit);
+      return {
+        visits,
+        total,
+        page,
+        limit,
+        totalPages
+      };
+    }
 
     return {
       visits,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit)
+      nextCursor,
+      hasNextPage,
+      limit
     };
   },
 

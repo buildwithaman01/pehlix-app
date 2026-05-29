@@ -52,6 +52,24 @@ export const R2Service = {
   },
 
   /**
+   * Generates a pre-signed URL for uploading an object (PutObject).
+   */
+  async getSignedUploadUrl(key, contentType = 'image/png', expiresInSeconds = 3600) {
+    try {
+      const command = new PutObjectCommand({
+        Bucket: config.CLOUDFLARE_R2_BUCKET_NAME,
+        Key: key,
+        ContentType: contentType
+      });
+      const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: expiresInSeconds });
+      return signedUrl;
+    } catch (error) {
+      console.error('R2 getSignedUploadUrl failed:', error);
+      throw new AppError('Signed upload URL generation failed', 'STORAGE_UPLOAD_FAILED', 500, { originalError: error.message });
+    }
+  },
+
+  /**
    * Generates a pre-signed URL for direct download (forces Content-Disposition: attachment).
    */
   async getSignedDownloadUrl(key) {

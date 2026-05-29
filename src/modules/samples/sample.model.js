@@ -78,11 +78,33 @@ const sampleSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'collected', 'received', 'processing', 'rejected'],
+    enum: ['pending', 'collected', 'in_transit', 'received', 'processing', 'stored', 'rejected', 'disposed'],
     default: 'pending',
     required: true
   },
   rejectionReason: {
+    type: String,
+    trim: true
+  },
+  isRejected: {
+    type: Boolean,
+    default: false,
+    required: true
+  },
+  rejectedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  rejectedAt: {
+    type: Date
+  },
+  receivedAt: {
+    type: Date
+  },
+  disposedAt: {
+    type: Date
+  },
+  storageLocation: {
     type: String,
     trim: true
   },

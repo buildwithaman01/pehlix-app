@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import mongooseEncryptionPlugin from '../../utils/encryption.plugin.js';
 
 const addressSchema = new mongoose.Schema({
   street: { type: String, trim: true },
@@ -168,6 +169,9 @@ const labSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Register encryption plugin
+labSchema.plugin(mongooseEncryptionPlugin, { fields: ['razorpayKeyId', 'razorpayKeySecret'] });
 
 const Lab = mongoose.models.Lab || mongoose.model('Lab', labSchema);
 export default Lab;

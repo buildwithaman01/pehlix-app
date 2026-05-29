@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { AuthController } from './auth.controller.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { otpRateLimit, loginRateLimit } from '../../middleware/rateLimit.middleware.js';
-import { validateRequest, sendOtpSchema, verifyOtpSchema, loginSchema } from './auth.validation.js';
+import { validateRequest, sendOtpSchema, verifyOtpSchema, loginSchema, registerLabSchema } from './auth.validation.js';
 
 const router = Router();
 
@@ -23,6 +23,9 @@ router.post('/logout', authenticate, AuthController.logout);
 
 // Set or update password endpoint for authenticated users (after OTP verification or for profile changes)
 router.post('/set-password', authenticate, AuthController.setPassword);
+
+// Laboratory self-registration route (public)
+router.post('/register-lab', validateRequest(registerLabSchema), AuthController.registerLab);
 
 export default router;
 export { router as authRouter };

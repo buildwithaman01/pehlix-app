@@ -6,6 +6,7 @@ import WhatsAppService from '../../utils/whatsapp.js';
 import SmsService from '../../utils/sms.js';
 import PdfService from '../../utils/pdf.js';
 import { config } from '../../config/index.js';
+import WhatsAppOutboxService from '../whatsappOutbox/whatsappOutbox.service.js';
 
 /**
  * Helper to verify shared PDF service secret.
@@ -107,6 +108,7 @@ export const pdfWebhookController = {
         // All nodes exhausted. Mark report status 'failed'.
         report.status = 'failed';
         await report.save();
+        await WhatsAppOutboxService.markGenerationFailed(reportId);
 
         // Create PlatformAlert for super admin
         await PlatformAlert.create({
@@ -159,6 +161,7 @@ export const pdfWebhookController = {
           // We should create alerts as well in this fallback scenario
           report.status = 'failed';
           await report.save();
+          await WhatsAppOutboxService.markGenerationFailed(reportId);
 
           await PlatformAlert.create({
             labId: report.labId?._id || labId,

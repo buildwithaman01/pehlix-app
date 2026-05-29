@@ -55,4 +55,11 @@ router.post(
   ResultController.rejectResult
 );
 
+// Phase 3.7 — Critical Value Monitor dashboard data
+router.get(
+  '/critical-monitor',
+  authorize('owner', 'pathologist'),
+  ResultController.getCriticalMonitor
+);
+
 export default router;

@@ -9,6 +9,7 @@ import PlatformAlert from '../analytics/alert.model.js';
 import { AuditLog } from '../../middleware/audit.middleware.js';
 import WhatsAppService from '../../utils/whatsapp.js';
 import PdfService from '../../utils/pdf.js';
+import { seedLabCatalog } from '../../utils/seedCatalog.js';
 
 const redis = new Redis({
   url: config.UPSTASH_REDIS_URL,
@@ -123,7 +124,10 @@ export const AdminService = {
       },
       features: {
         whatsappAlerts: true,
-        smsAlerts: true
+        smsAlerts: true,
+        communicationMode: 'waMe',
+        paymentCheckMode: 'pendingOnly',
+        showWhatsAppOnResultEntry: true
       },
       flags: {}
     };
@@ -208,19 +212,27 @@ export const AdminService = {
     savedLab.owner = savedOwner._id;
     await savedLab.save();
 
+    // Seed standard test catalog for this lab
+    try {
+      await seedLabCatalog(savedLab._id);
+    } catch (seedErr) {
+      console.error('Failed to seed standard tests during lab creation:', seedErr);
+    }
+
     // 7. Log to audit logs
+    const isSuperAdmin = mongoose.Types.ObjectId.isValid(createdBy);
     await AuditLog.create({
       labId: savedLab._id,
-      userId: createdBy,
-      role: 'superAdmin',
+      userId: isSuperAdmin ? createdBy : savedOwner._id,
+      role: isSuperAdmin ? 'superAdmin' : 'owner',
       action: 'lab_onboarded',
-      superAdmin: true,
+      superAdmin: isSuperAdmin,
       timestamp: new Date(),
       details: {
         labId: savedLab._id,
         ownerId: savedOwner._id,
         plan: data.plan,
-        createdBy
+        createdBy: isSuperAdmin ? createdBy : 'self'
       }
     });
 

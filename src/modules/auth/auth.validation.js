@@ -29,6 +29,19 @@ export const loginSchema = z.object({
   })
 });
 
+export const registerLabSchema = z.object({
+  body: z.object({
+    labName: z.string().min(3, { message: 'Laboratory name must be at least 3 characters' }),
+    ownerName: z.string().min(3, { message: 'Owner name must be at least 3 characters' }),
+    ownerPhone: z.string().length(10).regex(/^\d{10}$/, { message: 'Owner phone number must be exactly 10 digits' }),
+    ownerEmail: z.string().email({ message: 'Invalid owner email address' }),
+    city: z.string().min(2, { message: 'City must be at least 2 characters' }),
+    nablNumber: z.string().optional(),
+    gstNumber: z.string().optional()
+  })
+});
+
+
 /**
  * Middleware to validate incoming request data against a Zod schema.
  * Parses req.body, req.query, and req.params.
@@ -45,7 +58,7 @@ export function validateRequest(schema) {
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const details = error.errors.reduce((acc, err) => {
+        const details = (error.issues || error.errors || []).reduce((acc, err) => {
           const field = err.path.slice(1).join('.') || 'field';
           acc[field] = err.message;
           return acc;

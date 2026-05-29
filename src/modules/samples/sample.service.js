@@ -45,18 +45,36 @@ export const SampleService = {
   /**
    * Updates sample status and pushes to chain of custody
    */
-  async updateSampleStatus(labId, sampleId, status, userId, notes) {
+  async updateSampleStatus(labId, sampleId, status, userId, notes, storageLocation = null) {
     const sample = await Sample.findOne({ _id: sampleId, labId, isDeleted: { $ne: true } });
     if (!sample) {
       throw new AppError('Sample not found', 'VISIT_NOT_FOUND', 404);
     }
 
     sample.status = status;
+    
+    if (storageLocation !== null) {
+      sample.storageLocation = storageLocation;
+    }
+
+    if (status === 'received' && !sample.receivedAt) {
+      sample.receivedAt = new Date();
+    } else if (status === 'disposed' && !sample.disposedAt) {
+      sample.disposedAt = new Date();
+    } else if (status === 'rejected') {
+      sample.isRejected = true;
+      sample.rejectedBy = userId;
+      sample.rejectedAt = new Date();
+      if (notes) {
+        sample.rejectionReason = notes;
+      }
+    }
+
     sample.chainOfCustody.push({
       action: status,
       performedBy: userId,
       timestamp: new Date(),
-      notes
+      notes: notes || `Sample status updated to ${status}`
     });
 
     await sample.save();
@@ -73,7 +91,10 @@ export const SampleService = {
     }
 
     sample.status = 'rejected';
+    sample.isRejected = true;
     sample.rejectionReason = rejectionReason;
+    sample.rejectedBy = userId;
+    sample.rejectedAt = new Date();
     sample.chainOfCustody.push({
       action: 'rejected',
       performedBy: userId,

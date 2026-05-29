@@ -28,7 +28,7 @@ export function validateRequest(schema) {
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const details = error.errors.reduce((acc, err) => {
+        const details = (error.issues || error.errors || []).reduce((acc, err) => {
           const field = err.path.slice(1).join('.') || 'field';
           acc[field] = err.message;
           return acc;

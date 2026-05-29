@@ -85,6 +85,36 @@ const reportSchema = new mongoose.Schema({
   lastFailureReason: {
     type: String,
     trim: true
+  },
+  // Phase 3.6 — Report Amendment & Version History
+  version: {
+    type: Number,
+    default: 1
+  },
+  isAmended: {
+    type: Boolean,
+    default: false
+  },
+  amendmentReason: {
+    type: String,
+    trim: true
+  },
+  amendedAt: {
+    type: Date
+  },
+  amendedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  // Links amended version back to original report
+  originalReportId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Report'
+  },
+  // R2 key of the pre-amendment PDF (archived copy)
+  previousPdfUrl: {
+    type: String,
+    trim: true
   }
 }, {
   timestamps: true

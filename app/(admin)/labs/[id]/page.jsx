@@ -74,7 +74,10 @@ export default function LabDetailPage({ params: paramsPromise }) {
     smsAlerts: false,
     automatedReminders: false,
     dailySummaries: false,
-    doctorPortalAccess: false
+    doctorPortalAccess: false,
+    communicationMode: 'waMe',
+    paymentCheckMode: 'pendingOnly',
+    showWhatsAppOnResultEntry: true
   });
   const [limitsForm, setLimitsForm] = useState({
     staffCount: 3,
@@ -108,10 +111,14 @@ export default function LabDetailPage({ params: paramsPromise }) {
         smsAlerts: lab.planConfig?.features?.smsAlerts || false,
         automatedReminders: lab.planConfig?.features?.automatedReminders || false,
         dailySummaries: lab.planConfig?.features?.dailySummaries || false,
-        doctorPortalAccess: lab.planConfig?.features?.doctorPortalAccess || false
+        doctorPortalAccess: lab.planConfig?.features?.doctorPortalAccess || false,
+        communicationMode: lab.planConfig?.features?.communicationMode || 'waMe',
+        paymentCheckMode: lab.planConfig?.features?.paymentCheckMode || 'pendingOnly',
+        showWhatsAppOnResultEntry: lab.planConfig?.features?.showWhatsAppOnResultEntry !== false
       });
       setLimitsForm({
         staffCount: lab.planConfig?.limits?.staffCount || 3,
+        limitsType: lab.planConfig?.limits?.limitsType || 'fixed',
         monthlyTests: lab.planConfig?.limits?.monthlyTests || 300,
         monthlyPatients: lab.planConfig?.limits?.monthlyPatients || 500
       });
@@ -716,6 +723,57 @@ export default function LabDetailPage({ params: paramsPromise }) {
                       type="checkbox"
                       checked={!!featuresForm.doctorPortalAccess}
                       onChange={(e) => setFeaturesForm(prev => ({ ...prev, doctorPortalAccess: e.target.checked }))}
+                      className="w-4 h-4 rounded text-emerald-deep border-neutral-300 focus:ring-emerald-deep accent-emerald-600"
+                    />
+                  </div>
+
+                  {/* WhatsApp Communication Mode Override */}
+                  <div className="flex flex-col gap-1.5 p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50/50 transition-colors">
+                    <div className="flex justify-between items-center">
+                      <div className="space-y-0.5">
+                        <span className="text-sm font-semibold text-[#1E1E1E]">WhatsApp Communication Mode</span>
+                        <span className="text-[10px] text-neutral-400 block">Override manual link (wa.me) or automated delivery (Meta API)</span>
+                      </div>
+                      <select
+                        value={featuresForm.communicationMode}
+                        onChange={(e) => setFeaturesForm(prev => ({ ...prev, communicationMode: e.target.value }))}
+                        className="h-8 px-2 rounded-lg border border-neutral-200 bg-white text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all"
+                      >
+                        <option value="waMe">Manual Link (wa.me)</option>
+                        <option value="metaApi">Automated (Meta API)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Payment Verification Override */}
+                  <div className="flex flex-col gap-1.5 p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50/50 transition-colors">
+                    <div className="flex justify-between items-center">
+                      <div className="space-y-0.5">
+                        <span className="text-sm font-semibold text-[#1E1E1E]">Payment Verification Rule</span>
+                        <span className="text-[10px] text-neutral-400 block">Restrict delivery based on patient outstanding balances</span>
+                      </div>
+                      <select
+                        value={featuresForm.paymentCheckMode}
+                        onChange={(e) => setFeaturesForm(prev => ({ ...prev, paymentCheckMode: e.target.value }))}
+                        className="h-8 px-2 rounded-lg border border-neutral-200 bg-white text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all"
+                      >
+                        <option value="always">Always check balance</option>
+                        <option value="pendingOnly">Only on pending balance</option>
+                        <option value="never">Never check balance</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Show WhatsApp logo Override */}
+                  <div className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50/50 transition-colors">
+                    <div className="space-y-0.5">
+                      <span className="text-sm font-semibold text-[#1E1E1E]">Show WhatsApp Shortcut Link</span>
+                      <span className="text-[10px] text-neutral-400 block">Display the WhatsApp quick-share shortcut icon on the Results Entry work list</span>
+                    </div>
+                    <input 
+                      type="checkbox"
+                      checked={!!featuresForm.showWhatsAppOnResultEntry}
+                      onChange={(e) => setFeaturesForm(prev => ({ ...prev, showWhatsAppOnResultEntry: e.target.checked }))}
                       className="w-4 h-4 rounded text-emerald-deep border-neutral-300 focus:ring-emerald-deep accent-emerald-600"
                     />
                   </div>

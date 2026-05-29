@@ -155,6 +155,18 @@ export const ResultController = {
     } catch (error) {
       next(error);
     }
+  },
+  /**
+   * Critical Value Monitor — returns all unresolved/escalated critical results (Phase 3.7)
+   */
+  async getCriticalMonitor(req, res, next) {
+    try {
+      const labId = req.user.labId;
+      const data = await ResultService.getCriticalMonitor(labId);
+      return sendSuccess(res, data, 'Critical monitor data retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
   }
 };
 

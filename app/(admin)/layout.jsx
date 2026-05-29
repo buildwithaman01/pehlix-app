@@ -26,10 +26,19 @@ const ADMIN_NAV_ITEMS = [
 ];
 
 export default function AdminLayout({ children }) {
-  const { user, clearUser, isAuthenticated } = useAuthStore();
+  const { user, clearUser, isInitialized } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+
+  if (!isInitialized) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-neutral-light font-satoshi p-6 text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-deep" />
+        <p className="text-neutral-500 mt-4 text-sm font-medium animate-pulse">Securing session...</p>
+      </div>
+    );
+  }
 
   if (!user || user.role !== 'superAdmin') {
     return (

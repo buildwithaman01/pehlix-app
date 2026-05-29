@@ -1,5 +1,7 @@
+import mongoose from 'mongoose';
 import VisitService from './visit.service.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
+import WhatsAppLinkService from '../../utils/whatsappLink.js';
 
 export const VisitController = {
   /**
@@ -14,6 +16,27 @@ export const VisitController = {
       }
 
       const result = await VisitService.createVisit(labId, req.body, req.user.userId);
+
+      const Lab = mongoose.model('Lab');
+      const Patient = mongoose.model('Patient');
+      const TestMaster = mongoose.model('TestMaster');
+
+      const lab = await Lab.findById(labId);
+      const isWaMe = !lab?.planConfig?.features?.communicationMode || lab.planConfig.features.communicationMode === 'waMe';
+
+      if (isWaMe) {
+        const patient = await Patient.findById(result.visit.patientId);
+        if (patient) {
+          const tests = await TestMaster.find({ _id: { $in: result.visit.tests } });
+          const visitObj = {
+            ...result.visit.toObject(),
+            tests
+          };
+          const bookingLink = WhatsAppLinkService.generateBookingConfirmation(patient, lab, visitObj, result.invoice);
+          result.bookingLink = bookingLink;
+        }
+      }
+
       return sendSuccess(res, result, 'Visit registered successfully', 201);
     } catch (error) {
       next(error);
@@ -29,13 +52,14 @@ export const VisitController = {
       const status = req.query.status;
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
+      const cursor = req.query.cursor || null;
 
       const filters = {};
       if (status) {
         filters.status = status;
       }
 
-      const result = await VisitService.getVisits(labId, filters, page, limit);
+      const result = await VisitService.getVisits(labId, filters, page, limit, cursor);
       return sendSuccess(res, result, 'Visits retrieved successfully');
     } catch (error) {
       next(error);

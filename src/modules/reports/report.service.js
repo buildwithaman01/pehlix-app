@@ -11,6 +11,7 @@ import { AppError } from '../../utils/errors.js';
 import { config } from '../../config/index.js';
 import Razorpay from 'razorpay';
 import PlatformAlert from '../analytics/alert.model.js';
+import WhatsAppOutboxService from '../whatsappOutbox/whatsappOutbox.service.js';
 
 // Helper to generate a unique 12-character uppercase alphanumeric code
 export function generateReportCode() {
@@ -127,8 +128,24 @@ export const ReportService = {
       'statusTimestamps.reportedAt': new Date()
     });
 
-    // Check payment status and deliver report
-    await this.checkAndDeliverReport(report._id);
+    const lab = await mongoose.model('Lab').findById(report.labId);
+    const isWaMe = !lab?.planConfig?.features?.communicationMode || lab.planConfig.features.communicationMode === 'waMe';
+
+    if (isWaMe) {
+      try {
+        // Generate signed R2 URL (valid for 48 hours = 172800 seconds)
+        const signedUrlExpiry = new Date(Date.now() + 172800 * 1000);
+        const signedUrl = await R2Service.getSignedUrl(pdfUrl, 172800);
+        
+        await WhatsAppOutboxService.updatePdfReady(reportId, pdfUrl, signedUrl, signedUrlExpiry);
+        console.log(`[ReportService] Updated Outbox entry to ready for report: ${reportId}`);
+      } catch (outboxErr) {
+        console.error('[ReportService] Failed to update WhatsApp Outbox state:', outboxErr.message);
+      }
+    } else {
+      // Check payment status and deliver report
+      await this.checkAndDeliverReport(report._id);
+    }
 
     return report;
   },
@@ -434,6 +451,65 @@ export const ReportService = {
     return {
       shareUrl: result.signedUrl,
       reportCode: result.report.reportCode
+    };
+  },
+
+  /**
+   * Phase 3.6 — Amends a report.
+   * Archives the existing PDF, increments version, re-triggers PDF generation.
+   * The regenerated PDF will carry the AMENDED REPORT watermark.
+   */
+  async amendReport(labId, reportId, amendmentReason, pathologistId) {
+    if (!amendmentReason || amendmentReason.trim().length < 10) {
+      throw new AppError('Amendment reason must be at least 10 characters', 'VALIDATION_FAILED', 400);
+    }
+
+    const report = await Report.findOne({ _id: reportId, labId });
+    if (!report) {
+      throw new AppError('Report not found', 'REPORT_NOT_FOUND', 404);
+    }
+
+    if (report.status !== 'generated' && report.status !== 'delivered') {
+      throw new AppError('Only generated or delivered reports can be amended', 'REPORT_NOT_READY', 400);
+    }
+
+    // 1. Archive existing PDF before overwriting
+    if (report.pdfUrl) {
+      try {
+        const timestamp = Date.now();
+        const archiveKey = report.pdfUrl.replace('.pdf', `_v${report.version}_archived_${timestamp}.pdf`);
+        await R2Service.copyObject(report.pdfUrl, archiveKey);
+        report.previousPdfUrl = archiveKey;
+        console.log(`[ReportService] Archived v${report.version} PDF to ${archiveKey}`);
+      } catch (err) {
+        console.error('[ReportService] PDF archive failed, proceeding with amendment:', err.message);
+      }
+    }
+
+    // 2. Update amendment metadata
+    report.version = (report.version || 1) + 1;
+    report.isAmended = true;
+    report.amendmentReason = amendmentReason.trim();
+    report.amendedAt = new Date();
+    report.amendedBy = pathologistId;
+    report.originalReportId = report.originalReportId || report._id; // preserve chain
+
+    // 3. Reset PDF state for regeneration
+    report.pdfUrl = null;
+    report.status = 'approved'; // re-enter approved state → PDF will be regenerated
+    report.generatedAt = null;
+    report.generationAttempts = 0;
+    await report.save();
+
+    // 4. Re-trigger PDF generation
+    const genResult = await this.triggerPdfGeneration(report._id);
+
+    return {
+      success: true,
+      version: report.version,
+      amendmentReason: report.amendmentReason,
+      messageId: genResult.messageId,
+      reportCode: report.reportCode
     };
   }
 };

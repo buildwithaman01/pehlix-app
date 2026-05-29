@@ -41,7 +41,7 @@ export default function PatientsPage() {
   const [showRegister, setShowRegister] = useState(false);
   const [form, setForm] = useState({
     firstName: '', lastName: '', phone: '', age: '', ageUnit: 'years',
-    gender: '', email: '', consentGiven: true
+    gender: '', email: '', consentGiven: false
   });
 
   // Debounced search query
@@ -72,7 +72,7 @@ export default function PatientsPage() {
       toast.success(`Patient ${patient.patientCode} registered`);
       qc.invalidateQueries(['patients']);
       setShowRegister(false);
-      setForm({ firstName: '', lastName: '', phone: '', age: '', ageUnit: 'years', gender: '', email: '', consentGiven: true });
+      setForm({ firstName: '', lastName: '', phone: '', age: '', ageUnit: 'years', gender: '', email: '', consentGiven: false });
     },
     onError: (err) => toast.error(err?.response?.data?.message || 'Registration failed'),
   });
@@ -83,7 +83,11 @@ export default function PatientsPage() {
       toast.error('Please fill all required fields');
       return;
     }
-    registerMutation.mutate({ ...form, age: Number(form.age) });
+    if (!form.consentGiven) {
+      toast.error('Patient consent is required before registration');
+      return;
+    }
+    registerMutation.mutate({ ...form, age: Number(form.age), consentMethod: 'staff_entry' });
   }
 
   function formatAge(p) {
@@ -237,9 +241,22 @@ export default function PatientsPage() {
               <Input id="email" type="email" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} className="rounded-xl" placeholder="ravi@email.com" />
             </div>
 
+            <div className="flex items-start space-x-2 pt-3 pb-1 border-t border-neutral-100">
+              <input
+                id="consentGiven"
+                type="checkbox"
+                checked={form.consentGiven}
+                onChange={e => setForm(f => ({...f, consentGiven: e.target.checked}))}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#0F3D3E] focus:ring-[#0F3D3E]"
+              />
+              <Label htmlFor="consentGiven" className="text-xs text-neutral-500 leading-normal font-normal cursor-pointer select-none">
+                Patient / guardian has verbally consented to the collection and processing of personal and medical data under Pehlix Privacy Policy in compliance with the DPDP Act 2023.
+              </Label>
+            </div>
+
             <DialogFooter className="gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setShowRegister(false)} className="rounded-xl">Cancel</Button>
-              <Button type="submit" disabled={registerMutation.isPending} className="rounded-xl bg-[#0F3D3E] hover:bg-[#0a2e2f] text-white">
+              <Button type="submit" disabled={registerMutation.isPending || !form.consentGiven} className="rounded-xl bg-[#0F3D3E] hover:bg-[#0a2e2f] text-white">
                 {registerMutation.isPending ? 'Registering…' : 'Register Patient'}
               </Button>
             </DialogFooter>

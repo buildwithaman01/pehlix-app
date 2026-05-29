@@ -48,9 +48,10 @@ apiClient.interceptors.response.use(
         );
 
         const newAccessToken = refreshResponse.data.data.accessToken;
+        const newUser = refreshResponse.data.data.user;
 
         // Update the auth store
-        useAuthStore.getState().setUser(useAuthStore.getState().user, newAccessToken);
+        useAuthStore.getState().setUser(newUser, newAccessToken);
 
         // Update authorization header of the original request and retry
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;

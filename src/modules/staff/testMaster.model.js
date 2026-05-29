@@ -1,5 +1,27 @@
 import mongoose from 'mongoose';
 
+const referenceRangeSchema = new mongoose.Schema({
+  label: {
+    type: String,
+    trim: true  // e.g. "Adult Male (18+ yrs)", "Paediatric (1-12 yrs)"
+  },
+  genderMatch: [{
+    type: String,
+    enum: ['male', 'female', 'other', 'any']
+  }],
+  ageMin: { type: Number, default: 0 },
+  ageMax: { type: Number, default: 150 },
+  ageUnit: {
+    type: String,
+    enum: ['years', 'months', 'days'],
+    default: 'years'
+  },
+  normalLow: { type: Number },
+  normalHigh: { type: Number },
+  criticalLow: { type: Number },
+  criticalHigh: { type: Number }
+}, { _id: false });
+
 const testParameterSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -10,6 +32,7 @@ const testParameterSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  // Default flat ranges — used as fallback if no referenceRanges entry matches
   normalLow: {
     type: Number
   },
@@ -25,7 +48,9 @@ const testParameterSchema = new mongoose.Schema({
   isDerived: {
     type: Boolean,
     default: false
-  }
+  },
+  // Age/gender-specific reference ranges (Phase 3.4)
+  referenceRanges: [referenceRangeSchema]
 }, { _id: false });
 
 const derivedFormulaSchema = new mongoose.Schema({
@@ -77,6 +102,15 @@ const testMasterSchema = new mongoose.Schema({
   },
   parameters: [testParameterSchema],
   derivedFormulas: [derivedFormulaSchema],
+  labId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Lab',
+    index: true
+  },
+  isCustom: {
+    type: Boolean,
+    default: false
+  },
   isActive: {
     type: Boolean,
     default: true

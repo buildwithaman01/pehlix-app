@@ -1,6 +1,8 @@
 import nodemailer from 'nodemailer';
 import axios from 'axios';
+import mongoose from 'mongoose';
 import { config } from '../config/index.js';
+import { CircuitBreaker } from './circuitBreaker.js';
 
 const transporter = nodemailer.createTransport({
   host: config.SMTP_HOST || process.env.SMTP_HOST,
@@ -12,31 +14,78 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+const resendApiBreaker = new CircuitBreaker({
+  failureThreshold: 5,
+  cooldownMs: 30000,
+  timeoutMs: 3000,
+  name: 'ResendAPI'
+});
+
 export const EmailService = {
+  resendApiBreaker,
+
   /**
    * Send transactional email using Resend HTTP API directly
    */
-  async sendViaResend({ to, subject, html, text }) {
+  async sendViaResend({ to, subject, html, text, labId }) {
     if (!config.RESEND_API_KEY) {
       throw new Error('Resend API key is missing from configuration');
     }
-    const response = await axios.post(
-      'https://api.resend.com/emails',
-      {
-        from: config.SMTP_FROM || 'Pehlix Health <onboarding@resend.dev>',
-        to: [to],
-        subject,
-        html: html || text,
-        text: text || html
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${config.RESEND_API_KEY}`,
-          'Content-Type': 'application/json'
+
+    const callResendApi = async () => {
+      const response = await axios.post(
+        'https://api.resend.com/emails',
+        {
+          from: config.SMTP_FROM || 'Pehlix Health <onboarding@resend.dev>',
+          to: [to],
+          subject,
+          html: html || text,
+          text: text || html
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${config.RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
         }
+      );
+      return { messageId: response.data?.id || 'resend-mock-id' };
+    };
+
+    const handleFallback = async (error) => {
+      console.warn(`[EmailService] Resend API Circuit Breaker fallback triggered: ${error.message}`);
+      
+      try {
+        const Notification = mongoose.model('Notification');
+        let finalLabId = labId;
+        if (!finalLabId) {
+          const Lab = mongoose.model('Lab');
+          const defaultLab = await Lab.findOne();
+          finalLabId = defaultLab ? defaultLab._id : new mongoose.Types.ObjectId();
+        }
+
+        await Notification.create({
+          labId: finalLabId,
+          recipientPhone: to, // schema requires recipientPhone, we will store the email address there
+          recipientType: 'patient',
+          channel: 'email',
+          templateName: 'resend_fallback',
+          variables: { to, subject, error: error.message },
+          status: 'failed',
+          failureReason: `Resend Breaker: ${error.message}`
+        });
+      } catch (err) {
+        console.error('[EmailService] Failed to log email fallback failure in DB:', err.message);
       }
-    );
-    return { messageId: response.data?.id || 'resend-mock-id' };
+
+      return { success: false, error: error.message, isFallback: true };
+    };
+
+    try {
+      return await resendApiBreaker.execute(callResendApi, handleFallback);
+    } catch (err) {
+      return handleFallback(err);
+    }
   },
 
   /**
@@ -56,9 +105,11 @@ export const EmailService = {
   /**
    * Unified sendEmail method that determines route dynamically
    */
-  async sendEmail({ to, subject, html, text, preferResend = false }) {
-    // Development Mode Bypass
-    if (config.NODE_ENV !== 'production') {
+  async sendEmail({ to, subject, html, text, preferResend = false, labId }) {
+    // Development Mode Bypass (only if neither Resend nor SMTP is configured)
+    const hasResend = !!config.RESEND_API_KEY;
+    const hasSmtp = !!(config.SMTP_HOST && config.SMTP_USER);
+    if (config.NODE_ENV !== 'production' && !hasResend && !hasSmtp) {
       console.log('\n--- [DEVELOPMENT EMAIL OUTBOX] ---');
       console.log(`To:      ${to}`);
       console.log(`Subject: ${subject}`);
@@ -70,15 +121,15 @@ export const EmailService = {
 
     try {
       if (preferResend && config.RESEND_API_KEY) {
-        return await this.sendViaResend({ to, subject, html, text });
+        return await this.sendViaResend({ to, subject, html, text, labId });
       }
 
-      const hasSmtp = (config.SMTP_HOST || process.env.SMTP_HOST) && (config.SMTP_USER || process.env.SMTP_USER);
-      if (hasSmtp) {
+      const hasSmtpConfig = (config.SMTP_HOST || process.env.SMTP_HOST) && (config.SMTP_USER || process.env.SMTP_USER);
+      if (hasSmtpConfig) {
         return await this.sendViaSmtp({ to, subject, html, text });
       } else if (config.RESEND_API_KEY) {
         // Fallback to Resend HTTP API if SMTP is not configured
-        return await this.sendViaResend({ to, subject, html, text });
+        return await this.sendViaResend({ to, subject, html, text, labId });
       } else {
         console.warn(`[EmailService] Neither SMTP nor Resend API key is configured. Email skipped.`);
         return null;

@@ -3,6 +3,15 @@ import mongoose from 'mongoose';
 import { config } from '../config/index.js';
 import Notification from '../modules/notifications/notification.model.js';
 import SmsService from './sms.js';
+import WhatsAppLinkService from './whatsappLink.js';
+import { CircuitBreaker } from './circuitBreaker.js';
+
+const metaApiBreaker = new CircuitBreaker({
+  failureThreshold: 5,
+  cooldownMs: 30000,
+  timeoutMs: 3000,
+  name: 'MetaWhatsAppAPI'
+});
 
 // Order of variables expected by Meta API templates
 const TEMPLATE_VAR_MAP = {
@@ -101,6 +110,32 @@ export const WhatsAppService = {
 
     const recipientType = getRecipientType(templateName);
 
+    // Bypass Meta API if lab is in waMe communication mode
+    try {
+      const Lab = mongoose.model('Lab');
+      const lab = await Lab.findById(labId);
+      const isWaMe = !lab?.planConfig?.features?.communicationMode || lab.planConfig.features.communicationMode === 'waMe';
+      if (isWaMe) {
+        const smsMessage = compileSmsMessage(templateName, variables);
+        const waLink = WhatsAppLinkService.generateLink(phone, smsMessage);
+
+        await Notification.create({
+          labId,
+          recipientPhone: phone,
+          recipientType,
+          channel: 'whatsapp',
+          templateName,
+          variables: { ...variables, waLink },
+          status: 'queued',
+          retryCount: 0
+        });
+
+        return { success: true, waLink, isWaMe: true };
+      }
+    } catch (err) {
+      console.error('[WhatsAppService] Error checking lab communicationMode:', err);
+    }
+
     // 2. Initialize notification log
     const notification = await Notification.create({
       labId,
@@ -138,52 +173,34 @@ export const WhatsAppService = {
       }
     };
 
-    let attempt = 0;
-    let success = false;
-    let lastError = null;
-    let externalMessageId = null;
-
-    // Retry loop (3 attempts)
-    while (attempt < 3 && !success) {
-      try {
-        attempt++;
-        const response = await axios.post(
-          `https://graph.facebook.com/v18.0/${config.META_WHATSAPP_PHONE_NUMBER_ID}/messages`,
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${config.META_WHATSAPP_ACCESS_TOKEN}`,
-              'Content-Type': 'application/json'
-            }
+    const callMetaApi = async () => {
+      const response = await axios.post(
+        `https://graph.facebook.com/v18.0/${config.META_WHATSAPP_PHONE_NUMBER_ID}/messages`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${config.META_WHATSAPP_ACCESS_TOKEN}`,
+            'Content-Type': 'application/json'
           }
-        );
+        }
+      );
+      return response;
+    };
 
-        externalMessageId = response.data?.messages?.[0]?.id || 'meta_msg_success_placeholder';
-        success = true;
-      } catch (error) {
-        lastError = error;
-        notification.retryCount = attempt;
-        await notification.save();
-      }
-    }
-
-    if (success) {
-      notification.status = 'sent';
-      notification.externalMessageId = externalMessageId;
-      notification.sentAt = new Date();
-      await notification.save();
-      return { success: true, messageId: externalMessageId };
-    } else {
-      notification.status = 'failed';
-      notification.failureReason = lastError?.response?.data 
-        ? JSON.stringify(lastError.response.data) 
-        : lastError?.message || 'Meta API Call Failed';
+    const handleFallback = async (error) => {
+      console.warn(`[WhatsAppService] Meta API Circuit Breaker fallback triggered due to: ${error.message}`);
+      
+      const smsMessage = compileSmsMessage(templateName, variables);
+      const waLink = WhatsAppLinkService.generateLink(phone, smsMessage);
+      
+      // Update the initialized notification log to reflect the fallback to manual outbox
+      notification.status = 'queued';
+      notification.failureReason = `Circuit Breaker Fallback: ${error.message}`;
+      notification.variables = { ...notification.variables, waLink };
       await notification.save();
 
       // Trigger SMS Fallback via MSG91
-      const smsMessage = compileSmsMessage(templateName, variables);
       console.log(`[SMS Fallback Triggered for ${phone}] Message: "${smsMessage}"`);
-
       const smsResult = await SmsService.send(phone, smsMessage);
 
       // Log SMS fallback notification
@@ -199,12 +216,32 @@ export const WhatsAppService = {
         sentAt: smsResult.success ? new Date() : undefined
       });
 
-      return {
-        success: false,
+      return { 
+        success: true, 
+        waLink, 
+        isWaMe: true,
         fallbackSent: smsResult.success,
-        error: lastError?.message
+        error: error.message 
       };
+    };
+
+    let response;
+    try {
+      response = await metaApiBreaker.execute(callMetaApi, handleFallback);
+    } catch (err) {
+      return handleFallback(err);
     }
+
+    if (response && response.isWaMe) {
+      return response;
+    }
+
+    const externalMessageId = response.data?.messages?.[0]?.id || 'meta_msg_success_placeholder';
+    notification.status = 'sent';
+    notification.externalMessageId = externalMessageId;
+    notification.sentAt = new Date();
+    await notification.save();
+    return { success: true, messageId: externalMessageId };
   },
 
   /**
@@ -251,46 +288,25 @@ export const WhatsAppService = {
       }
     };
 
-    let attempt = 0;
-    let success = false;
-    let lastError = null;
-    let externalMessageId = null;
-
-    // Retry loop (3 attempts)
-    while (attempt < 3 && !success) {
-      try {
-        attempt++;
-        const response = await axios.post(
-          `https://graph.facebook.com/v18.0/${config.META_WHATSAPP_PHONE_NUMBER_ID}/messages`,
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${config.META_WHATSAPP_ACCESS_TOKEN}`,
-              'Content-Type': 'application/json'
-            }
+    const callMetaApi = async () => {
+      const response = await axios.post(
+        `https://graph.facebook.com/v18.0/${config.META_WHATSAPP_PHONE_NUMBER_ID}/messages`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${config.META_WHATSAPP_ACCESS_TOKEN}`,
+            'Content-Type': 'application/json'
           }
-        );
+        }
+      );
+      return response;
+    };
 
-        externalMessageId = response.data?.messages?.[0]?.id || 'meta_msg_success_placeholder';
-        success = true;
-      } catch (error) {
-        lastError = error;
-        notification.retryCount = attempt;
-        await notification.save();
-      }
-    }
-
-    if (success) {
-      notification.status = 'sent';
-      notification.externalMessageId = externalMessageId;
-      notification.sentAt = new Date();
-      await notification.save();
-      return { success: true, messageId: externalMessageId };
-    } else {
+    const handleFallback = async (error) => {
+      console.warn(`[WhatsAppService: sendDirectText] Fallback triggered due to: ${error.message}`);
+      
       notification.status = 'failed';
-      notification.failureReason = lastError?.response?.data 
-        ? JSON.stringify(lastError.response.data) 
-        : lastError?.message || 'Meta API Call Failed';
+      notification.failureReason = `Circuit Breaker Fallback: ${error.message}`;
       await notification.save();
 
       // Trigger SMS Fallback via MSG91
@@ -313,9 +329,27 @@ export const WhatsAppService = {
       return {
         success: false,
         fallbackSent: smsResult.success,
-        error: lastError?.message
+        error: error.message
       };
+    };
+
+    let response;
+    try {
+      response = await metaApiBreaker.execute(callMetaApi, handleFallback);
+    } catch (err) {
+      return handleFallback(err);
     }
+
+    if (response && (response.success === false || response.error)) {
+      return response;
+    }
+
+    const externalMessageId = response.data?.messages?.[0]?.id || 'meta_msg_success_placeholder';
+    notification.status = 'sent';
+    notification.externalMessageId = externalMessageId;
+    notification.sentAt = new Date();
+    await notification.save();
+    return { success: true, messageId: externalMessageId };
   }
 };
 

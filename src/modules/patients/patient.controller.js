@@ -6,6 +6,7 @@ import Report from '../reports/report.model.js';
 import Result from '../results/result.model.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
 import { AppError } from '../../utils/errors.js';
+import { calculateBlindIndex } from '../../utils/crypto.js';
 
 export const PatientController = {
   /**
@@ -18,7 +19,8 @@ export const PatientController = {
         return sendError(res, 'AUTH_INSUFFICIENT_PERMISSIONS', 'Lab ID is missing in user token context', {}, 403);
       }
 
-      const patient = await PatientService.createPatient(labId, req.body, req.user.userId);
+      const ipAddress = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
+      const patient = await PatientService.createPatient(labId, req.body, req.user.userId, ipAddress);
       return sendSuccess(res, patient, 'Patient registered successfully', 201);
     } catch (error) {
       next(error);
@@ -34,8 +36,9 @@ export const PatientController = {
       const query = req.query.q || '';
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
+      const cursor = req.query.cursor || null;
 
-      const result = await PatientService.searchPatients(labId, query, page, limit);
+      const result = await PatientService.searchPatients(labId, query, page, limit, cursor);
       return sendSuccess(res, result, 'Patients retrieved successfully');
     } catch (error) {
       next(error);
@@ -94,8 +97,9 @@ export const PatientController = {
       const query = req.query.q || '';
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
+      const cursor = req.query.cursor || null;
 
-      const result = await PatientService.searchPatients(labId, query, page, limit);
+      const result = await PatientService.searchPatients(labId, query, page, limit, cursor);
       return sendSuccess(res, result, 'Patient search completed');
     } catch (error) {
       next(error);
@@ -148,7 +152,8 @@ export const PatientController = {
         return sendError(res, 'USER_NOT_FOUND', 'Patient user not found', {}, 404);
       }
 
-      const patients = await Patient.find({ phone: user.phone, isDeleted: { $ne: true } }).populate('labId');
+      const blindIndex = calculateBlindIndex(user.phone, 'phone');
+      const patients = await Patient.find({ phoneBlindIndex: blindIndex, isDeleted: { $ne: true } }).populate('labId');
       return sendSuccess(res, { user, patients }, 'Portal profile retrieved successfully');
     } catch (error) {
       next(error);
@@ -166,8 +171,9 @@ export const PatientController = {
         return sendError(res, 'USER_NOT_FOUND', 'Patient user not found', {}, 404);
       }
 
-      // Find all patient records matching phone number
-      const patients = await Patient.find({ phone: user.phone, isDeleted: { $ne: true } });
+      // Find all patient records matching phone number blind index
+      const blindIndex = calculateBlindIndex(user.phone, 'phone');
+      const patients = await Patient.find({ phoneBlindIndex: blindIndex, isDeleted: { $ne: true } });
       const patientIds = patients.map(p => p._id);
 
       // Find all reports corresponding to these patient records

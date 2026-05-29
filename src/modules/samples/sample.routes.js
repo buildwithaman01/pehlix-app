@@ -43,4 +43,10 @@ router.get(
   SampleController.getPendingSamples
 );
 
+router.get(
+  '/:id/chain',
+  authorize('owner', 'technician', 'pathologist'),
+  SampleController.getSampleChain
+);
+
 export default router;

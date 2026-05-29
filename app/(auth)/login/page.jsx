@@ -277,6 +277,19 @@ export default function LoginPage() {
           <p className="text-xs text-neutral-400 text-center mt-5">
             By continuing, you agree to Pehlix&apos;s Terms of Service
           </p>
+
+          <div className="mt-6 pt-4 border-t border-neutral-100 text-center">
+            <p className="text-xs text-neutral-500">
+              Want to manage your lab?{' '}
+              <button
+                type="button"
+                onClick={() => router.push('/register')}
+                className="text-[#0F3D3E] font-bold hover:underline"
+              >
+                Register Laboratory
+              </button>
+            </p>
+          </div>
         </div>
 
         <p className="text-center text-white/40 text-xs mt-6">

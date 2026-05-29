@@ -1,5 +1,8 @@
 import Lab from './lab.model.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
+import qstashService from '../../utils/qstash.js';
+import { config } from '../../config/index.js';
+import WhatsAppOutboxService from '../whatsappOutbox/whatsappOutbox.service.js';
 
 export const SettingsController = {
   /**
@@ -49,7 +52,10 @@ export const SettingsController = {
         nablNumber,
         gstNumber,
         razorpayKeyId,
-        razorpayKeySecret
+        razorpayKeySecret,
+        communicationMode,
+        paymentCheckMode,
+        showWhatsAppOnResultEntry
       } = req.body;
 
       const lab = await Lab.findById(labId);
@@ -72,6 +78,35 @@ export const SettingsController = {
         lab.razorpayKeySecret = razorpayKeySecret;
       }
 
+      // Save planConfig features configuration (GAP 10)
+      if (!lab.planConfig) {
+        lab.planConfig = {};
+      }
+      if (!lab.planConfig.features) {
+        lab.planConfig.features = {};
+      }
+
+      // Check transition from waMe to metaApi
+      if (communicationMode !== undefined && communicationMode !== lab.planConfig?.features?.communicationMode) {
+        const oldMode = lab.planConfig?.features?.communicationMode || 'waMe';
+        if (oldMode === 'waMe' && communicationMode === 'metaApi') {
+          try {
+            await qstashService.enqueue(`${config.NEXT_PUBLIC_APP_URL}/api/internal/whatsapp-outbox/process-meta`, {
+              labId: labId.toString()
+            });
+            console.log(`[SettingsController] Scheduled outbox Meta transition job for lab ${labId}`);
+          } catch (qstashErr) {
+            console.error('[SettingsController] Failed to queue transition job via QStash, falling back to inline background trigger:', qstashErr.message);
+            WhatsAppOutboxService.processOutboxToMeta(labId).catch(console.error);
+          }
+        }
+      }
+
+      if (communicationMode !== undefined) lab.planConfig.features.communicationMode = communicationMode;
+      if (paymentCheckMode !== undefined) lab.planConfig.features.paymentCheckMode = paymentCheckMode;
+      if (showWhatsAppOnResultEntry !== undefined) lab.planConfig.features.showWhatsAppOnResultEntry = showWhatsAppOnResultEntry;
+
+      lab.markModified('planConfig');
       await lab.save();
 
       const labObj = lab.toObject();

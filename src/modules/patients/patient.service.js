@@ -1,7 +1,9 @@
+import mongoose from 'mongoose';
 import Patient from './patient.model.js';
 import Visit from '../visits/visit.model.js';
 import Report from '../reports/report.model.js';
 import { AppError } from '../../utils/errors.js';
+import { calculateBlindIndex } from '../../utils/crypto.js';
 
 export const PatientService = {
   /**
@@ -16,19 +18,27 @@ export const PatientService = {
   },
 
   /**
-   * Creates a new patient record.
+   * Creates a new patient record. Enforces DPDP Act 2023 consent requirement.
    */
-  async createPatient(labId, data, createdBy) {
+  async createPatient(labId, data, createdBy, ipAddress = null) {
+    // 3.1 Consent enforcement — patient cannot be registered without consent
+    if (!data.consentGiven) {
+      throw new AppError(
+        'Patient consent is required before registration. Please confirm the patient has verbally consented to data collection.',
+        'CONSENT_REQUIRED',
+        422
+      );
+    }
+
     const patientCode = await this.generatePatientCode(labId);
 
-    const consentTimestamp = data.consentGiven ? new Date() : undefined;
-
-    // Build the patient document, ensuring labId is set from the parameter
     const patient = new Patient({
       ...data,
       labId,
       patientCode,
-      consentTimestamp,
+      consentTimestamp: new Date(),
+      consentIpAddress: ipAddress || undefined,
+      consentMethod: data.consentMethod || 'staff_entry',
       isActive: true
     });
 
@@ -40,19 +50,106 @@ export const PatientService = {
    * Finds one patient by labId and phone (auto-fill lookup).
    */
   async findByPhone(labId, phone) {
-    const patient = await Patient.findOne({ labId, phone, isDeleted: { $ne: true } });
+    const blindIndex = calculateBlindIndex(phone, 'phone');
+    const patient = await Patient.findOne({ labId, phoneBlindIndex: blindIndex, isDeleted: { $ne: true } });
     return patient;
   },
 
   /**
    * Searches patients with MongoDB Atlas Search, falling back to regex.
    */
-  async searchPatients(labId, query, page = 1, limit = 10) {
+  async searchPatients(labId, query = '', page = 1, limit = 10, cursor = null) {
     let patients = [];
     let total = 0;
 
+    if (!query || query.trim() === '') {
+      const filter = { labId, isDeleted: { $ne: true } };
+      let hasNextPage = false;
+      let nextCursor = null;
+
+      if (cursor !== null) {
+        if (cursor) {
+          try {
+            const decoded = Buffer.from(cursor, 'base64').toString('utf8');
+            const parts = decoded.split('_');
+            if (parts.length === 2) {
+              const cursorDate = new Date(parts[0]);
+              const cursorId = parts[1];
+              filter.$or = [
+                { createdAt: { $lt: cursorDate } },
+                { createdAt: cursorDate, _id: { $lt: new mongoose.Types.ObjectId(cursorId) } }
+              ];
+            }
+          } catch (err) {
+            console.error('[PatientService] Failed to parse cursor, falling back to all records:', err);
+          }
+        }
+
+        patients = await Patient.find(filter)
+          .sort({ createdAt: -1, _id: -1 })
+          .limit(limit + 1);
+
+        if (patients.length > limit) {
+          hasNextPage = true;
+          const lastItem = patients[limit - 1];
+          nextCursor = Buffer.from(`${lastItem.createdAt.toISOString()}_${lastItem._id.toString()}`).toString('base64');
+          patients = patients.slice(0, limit);
+        }
+      } else {
+        total = await Patient.countDocuments(filter);
+        patients = await Patient.find(filter)
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .sort({ createdAt: -1, _id: -1 });
+
+        const totalPages = Math.ceil(total / limit);
+        return {
+          patients,
+          total,
+          page,
+          limit,
+          totalPages
+        };
+      }
+
+      return {
+        patients,
+        nextCursor,
+        hasNextPage,
+        limit
+      };
+    }
+
+    const cleanQuery = query.replace(/\D/g, '');
+    const isPhoneSearch = cleanQuery.length >= 10;
+    const phoneHash = isPhoneSearch ? calculateBlindIndex(cleanQuery, 'phone') : null;
+
     // Try Atlas Search first
     try {
+      const shouldConditions = [
+        {
+          text: {
+            query: query,
+            path: ['firstName', 'lastName']
+          }
+        },
+        {
+          phrase: {
+            query: query,
+            path: 'patientCode'
+          }
+        }
+      ];
+
+      if (isPhoneSearch) {
+        shouldConditions.push({
+          equals: {
+            path: 'phoneBlindIndex',
+            value: phoneHash
+          }
+        });
+      }
+
       const pipeline = [
         {
           $search: {
@@ -66,20 +163,7 @@ export const PatientService = {
                   }
                 }
               ],
-              should: [
-                {
-                  text: {
-                    query: query,
-                    path: ['firstName', 'lastName', 'phone']
-                  }
-                },
-                {
-                  phrase: {
-                    query: query,
-                    path: 'patientCode'
-                  }
-                }
-              ]
+              should: shouldConditions
             }
           }
         },
@@ -102,15 +186,20 @@ export const PatientService = {
     } catch (error) {
       // Fallback: standard Regex search
       const regex = new RegExp(query, 'i');
+      const orConditions = [
+        { firstName: regex },
+        { lastName: regex },
+        { patientCode: regex }
+      ];
+
+      if (isPhoneSearch) {
+        orConditions.push({ phoneBlindIndex: phoneHash });
+      }
+
       const filter = {
         labId,
         isDeleted: { $ne: true },
-        $or: [
-          { firstName: regex },
-          { lastName: regex },
-          { phone: regex },
-          { patientCode: regex }
-        ]
+        $or: orConditions
       };
 
       total = await Patient.countDocuments(filter);

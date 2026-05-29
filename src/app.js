@@ -4,6 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
 import { config } from './config/index.js';
+import logger from './utils/logger.js';
 import authRouter from './modules/auth/auth.routes.js';
 
 const app = express();
@@ -15,16 +16,67 @@ app.use(express.json());
 // 2. express.urlencoded()
 app.use(express.urlencoded({ extended: true }));
 
-// 3. helmet()
-app.use(helmet());
+// 3. helmet() with strict Content-Security-Policy (CSP)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://checkout.razorpay.com", "https://challenges.cloudflare.com"],
+      frameSrc: ["'self'", "https://checkout.razorpay.com", "https://challenges.cloudflare.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https://pehlix-reports.r2.cloudflarestorage.com"],
+      connectSrc: ["'self'", "https://api.razorpay.com", "https://challenges.cloudflare.com"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    }
+  }
+}));
 
-// 4. cors() with origin from config
+// 4. cors() with strict origin checks (denies wildcards in production)
+const corsWhitelist = [
+  'https://app.pehlix.in',
+  'https://verify.pehlix.in'
+];
+
 app.use(cors({
-  origin: config.NEXT_PUBLIC_APP_URL || '*',
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    
+    const isWhitelisted = corsWhitelist.includes(origin);
+    const isLocalDev = process.env.NODE_ENV !== 'production' && (
+      origin.startsWith('http://localhost:') || 
+      origin.startsWith('http://127.0.0.1:')
+    );
+
+    if (isWhitelisted || isLocalDev) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 
-// 5. cookieParser() and mongoSanitize()
+// 5. HTTP request logger — streams to Better Stack in production
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const level = res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info';
+    logger[level](`${req.method} ${req.path} ${res.statusCode}`, {
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      duration_ms: duration,
+      ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown',
+      user_agent: req.headers['user-agent']
+    });
+  });
+  next();
+});
+
+// 6. cookieParser() and mongoSanitize()
 app.use(cookieParser());
 
 // Express 5 compatibility workaround for express-mongo-sanitize
@@ -77,6 +129,9 @@ import homeCollectionRouter from './modules/homeCollections/homeCollection.route
 import staffRouter from './modules/staff/staff.routes.js';
 import settingsRouter from './modules/staff/settings.routes.js';
 import testsRouter from './modules/staff/tests.routes.js';
+import whatsappOutboxRouter from './modules/whatsappOutbox/whatsappOutbox.routes.js';
+import resultAuditRouter from './modules/results/resultAudit.routes.js';
+import notificationRouter from './modules/notifications/notification.routes.js';
 
 // Internal Background Job Processing routes
 import mongoose from 'mongoose';
@@ -88,12 +143,29 @@ import pdfWebhookController from './modules/webhooks/pdf.webhook.js';
 import ReportService from './modules/reports/report.service.js';
 import Report from './modules/reports/report.model.js';
 import Visit from './modules/visits/visit.model.js';
+import WhatsAppOutboxService from './modules/whatsappOutbox/whatsappOutbox.service.js';
 import { AppError } from './utils/errors.js';
 
 const internalRouter = express.Router();
 
 internalRouter.post('/pdf/generated', pdfWebhookController.onPdfGenerated);
 internalRouter.post('/pdf/failed', pdfWebhookController.onPdfFailed);
+
+// Transition Background Job: process queued outbox to Meta API (GAP 10)
+internalRouter.post('/whatsapp-outbox/process-meta', async (req, res, next) => {
+  try {
+    const { labId } = req.body;
+    if (!labId) {
+      return res.status(400).json({ error: 'labId is required' });
+    }
+    console.log(`[QStash Outbox Transition Job] Starting for lab ${labId}`);
+    await WhatsAppOutboxService.processOutboxToMeta(labId);
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('[QStash Outbox Transition Job] Failed:', error);
+    next(error);
+  }
+});
 
 internalRouter.post('/reports/generate', async (req, res, next) => {
   try {
@@ -278,7 +350,41 @@ app.use('/api/home-collections', homeCollectionRouter);
 app.use('/api/staff', staffRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/tests', testsRouter);
+app.use('/api/whatsapp-outbox', whatsappOutboxRouter);
+app.use('/api/audit', resultAuditRouter);
+app.use('/api/notifications', notificationRouter);
 app.use('/api/internal', internalRouter);
+
+// Global error handler — logs to Better Stack then sends JSON response
+app.use((err, req, res, next) => {
+  const status = err.statusCode || err.status || 500;
+  const code = err.code || 'INTERNAL_ERROR';
+  const message = err.message || 'Internal Server Error';
+
+  if (status >= 500) {
+    logger.error(`${req.method} ${req.path} → ${status} ${code}`, {
+      method: req.method,
+      path: req.path,
+      status,
+      code,
+      message,
+      stack: err.stack
+    });
+  } else if (status >= 400) {
+    logger.warn(`${req.method} ${req.path} → ${status} ${code}`, {
+      method: req.method,
+      path: req.path,
+      status,
+      code,
+      message
+    });
+  }
+
+  return res.status(status).json({
+    success: false,
+    error: { code, message }
+  });
+});
 
 export default app;
 export { app };

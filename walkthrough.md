@@ -115,3 +115,28 @@ Implemented random load-balanced selection & intelligent failover queueing in th
   * **Refund & Cancellation Policy** ([refund/page.jsx](file:///m:/pehlix/pehlix-app/app/(marketing)/refund/page.jsx)): Explains the 14-day free trial, monthly/annual subscription parameters, and cancellation flows.
 * **Footer Navigation Integration**: Modified the main marketing layout ([layout.jsx](file:///m:/pehlix/pehlix-app/app/(marketing)/layout.jsx)) to link all four compliance pages under a new "Support & Legal" footer section.
 * **Static Generation Build**: Validated the changes using Next.js build compilation (`npm run build`). All compliance pages were compiled as pre-rendered static routes (`○ (Static)`), ensuring fast loads and SEO compliance.
+
+---
+
+## 13. WhatsApp Manual Outbox & B2B SaaS Growth Workaround
+Implemented a manual click-to-chat `wa.me` outbox delivery system alongside automated Meta Cloud API delivery, helping diagnostic labs bypass aggressive Meta API blocking:
+* **Manual Outbox Schema & Service** ([whatsappOutbox.model.js](file:///m:/pehlix/pehlix-app/src/modules/whatsappOutbox/whatsappOutbox.model.js)):
+  - Built outbox model tracking reports, invoices, patient details, and PDF statuses (`generating`, `ready`, `failed`).
+  - Added a 7-day MongoDB TTL index on the `sentAt` field to auto-prune sent outbox items without manual cron tasks.
+  - Implemented multi-tenant isolation (`labId`) on all endpoints and services.
+* **Signed URL Expiry Refresh & Dynamic Sync** ([whatsappOutbox.service.js](file:///m:/pehlix/pehlix-app/src/modules/whatsappOutbox/whatsappOutbox.service.js)):
+  - Automatically regenerates Cloudflare R2 signed URLs on the fly during outbox fetches if the 48-hour expiration period has elapsed.
+  - Synchronizes invoice payment balances dynamically during retrieval, automatically switching message templates from unpaid payment requests to paid report ready links.
+* **Booking Confirmation Link Generation** ([visit.controller.js](file:///m:/pehlix/pehlix-app/src/modules/visits/visit.controller.js)):
+  - Generates booking confirmation links immediately on visit creation, returning the link in the API JSON payload so receptionists can share booking receipts immediately.
+* **Outbox Statistics Cache**:
+  - Implemented caching for outbox stats aggregates in Upstash Redis (TTL 30s) under the key `outbox-stats:LABID`, invalidating cache automatically on new approvals or manual sends to prevent DB aggregation overhead from client polling.
+* **Premium Outbox UI Dashboard** ([whatsapp-outbox/page.jsx](file:///m:/pehlix/pehlix-app/app/(lab)/whatsapp-outbox/page.jsx)):
+  - Features real-time stats count headers, tabs for filtering (`Pending PDF`, `Ready`, `Sent`, `Failed`), search by patient name/phone/ID, and 10s automatic polling.
+  - Integrates inline quick payment modification modals, editable preview boxes, and optimistic UI transitions that immediately update status fields visually.
+  - Added a shortcut widget to the main lab dashboard and a dynamic red badge displaying the ready outbox count in the navigation sidebar.
+* **Settings & Super Admin Configuration**:
+  - Exposed dropdowns for communication preferences (`metaApi` or `waMe`), payment validation checks, and results-entry visibility toggles inside the Lab settings ([settings/page.jsx](file:///m:/pehlix/pehlix-app/app/(lab)/settings/page.jsx)) and Admin dashboard ([labs/[id]/page.jsx](file:///m:/pehlix/pehlix-app/app/(admin)/labs/[id]/page.jsx)).
+* **Verification**:
+  - Run the validation suite `scratch/test_whatsapp_outbox.js` confirming 100% green test outcomes for booking link population, pathologist approval deduplication, status transition callbacks, expiry refresh, dynamic invoice status syncing, and multi-tenant security checks.
+  - Production build compiled successfully under Next.js 16.2.6 (Turbopack), verifying absolute route health.

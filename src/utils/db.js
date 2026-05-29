@@ -24,5 +24,13 @@ export async function connectDB() {
   };
 
   cachedConnection = await mongoose.connect(uri, options);
+
+  // Seed standard global catalog asynchronously
+  import('./seedCatalog.js').then(({ seedGlobalCatalog }) => {
+    seedGlobalCatalog();
+  }).catch(err => {
+    console.error('Failed to start catalog seeding:', err);
+  });
+
   return cachedConnection;
 }

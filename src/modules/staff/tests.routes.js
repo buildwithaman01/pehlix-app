@@ -19,6 +19,8 @@ router.get('/master', authorize('owner'), TestsController.getMasterCatalog);
 // Lab-specific tests
 router.get('/', authorize('owner', 'receptionist', 'technician', 'pathologist'), TestsController.getTests);
 router.post('/', authorize('owner'), TestsController.importTest);
+router.post('/custom', authorize('owner'), TestsController.createCustomTest);
+router.post('/:id/reset', authorize('owner'), TestsController.resetTest);
 router.get('/:id', authorize('owner', 'receptionist', 'technician', 'pathologist'), TestsController.getTestById);
 router.patch('/:id', authorize('owner'), TestsController.updateTest);
 router.put('/:id', authorize('owner'), TestsController.updateTest);

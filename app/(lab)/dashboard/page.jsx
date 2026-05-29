@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { analyticsApi } from '@/lib/api/analytics.api';
 import KpiCard from '@/components/shared/KpiCard';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
+import { useAuthStore } from '@/lib/stores/auth.store';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import {
-  IndianRupee, Users, Clock, FileCheck, Package, AlertTriangle, TrendingUp, RefreshCw
+  IndianRupee, Users, Clock, FileCheck, Package, AlertTriangle, TrendingUp, RefreshCw, MessageSquare
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,6 +42,28 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('payments');
+  const { user } = useAuthStore();
+  const [readyOutboxCount, setReadyOutboxCount] = useState(0);
+
+  useEffect(() => {
+    if (!user || !['owner', 'receptionist'].includes(user.role)) return;
+
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/whatsapp-outbox/stats');
+        const data = await res.json();
+        if (data.success && data.data) {
+          setReadyOutboxCount(data.data.ready || 0);
+        }
+      } catch (err) {
+        console.error('Failed to fetch outbox stats on dashboard:', err);
+      }
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 15000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['dashboard'],
@@ -103,6 +127,31 @@ export default function DashboardPage() {
           </Button>
         }
       />
+
+      {/* WhatsApp Outbox Shortcut Banner */}
+      {readyOutboxCount > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-gradient-to-r from-emerald-50 to-[#25D366]/10 border border-[#25D366]/30 rounded-2xl shadow-sm relative overflow-hidden group">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#25D366]/15 flex items-center justify-center text-[#25D366] shrink-0">
+              <MessageSquare className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <h4 className="font-bold text-[#1E1E1E] text-sm">WhatsApp Outbox Reports Ready</h4>
+              <p className="text-xs text-neutral-500 font-semibold mt-0.5">
+                You have {readyOutboxCount} patient report{readyOutboxCount > 1 ? 's' : ''} generated and ready to be sent manually.
+              </p>
+            </div>
+          </div>
+          <Link href="/whatsapp-outbox" passHref legacyBehavior>
+            <Button
+              size="sm"
+              className="rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white border-none gap-1.5 shadow-sm hover:shadow transition-all duration-200 shrink-0 font-bold"
+            >
+              <span>View Outbox</span>
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -20,4 +20,7 @@ router.post('/', authorize('owner'), StaffController.createStaff);
 router.patch('/:id', authorize('owner'), StaffController.updateStaff);
 router.put('/:id', authorize('owner'), StaffController.updateStaff);
 
+// Signature upload URL generator for pathologist
+router.put('/:id/signature', authorize('owner', 'pathologist'), StaffController.getSignatureUploadUrl);
+
 export default router;

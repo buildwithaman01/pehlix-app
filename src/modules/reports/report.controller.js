@@ -1,9 +1,65 @@
+import { Redis } from '@upstash/redis';
+import config from '../../config/index.js';
+import TurnstileService from '../../utils/turnstile.js';
 import Report from './report.model.js';
 import Result from '../results/result.model.js';
 import ReportService from './report.service.js';
 import R2Service from '../../utils/r2.js';
 import { sendSuccess } from '../../utils/response.js';
 import { AppError } from '../../utils/errors.js';
+
+let redis = null;
+if (config.UPSTASH_REDIS_URL && config.UPSTASH_REDIS_TOKEN) {
+  redis = new Redis({
+    url: config.UPSTASH_REDIS_URL,
+    token: config.UPSTASH_REDIS_TOKEN
+  });
+}
+
+const memoryRateLimiter = new Map();
+
+async function checkRateLimit(ip) {
+  const windowMs = 60 * 1000;
+  const maxRequests = 10;
+  
+  if (redis) {
+    const key = `rate-limit:verify-report:${ip}`;
+    const count = await redis.get(key);
+    
+    if (count === null || count === undefined) {
+      await redis.set(key, 1, { ex: 60 });
+      return { count: 1, limitExceeded: false };
+    }
+    
+    const newCount = await redis.incr(key);
+    if (newCount === 1) {
+      await redis.expire(key, 60);
+    }
+    
+    return { count: newCount, limitExceeded: newCount > maxRequests };
+  } else {
+    const now = Date.now();
+    let record = memoryRateLimiter.get(ip);
+    
+    if (!record || (now - record.startTime) > windowMs) {
+      record = { count: 1, startTime: now };
+      memoryRateLimiter.set(ip, record);
+      return { count: 1, limitExceeded: false };
+    }
+    
+    record.count += 1;
+    return { count: record.count, limitExceeded: record.count > maxRequests };
+  }
+}
+
+async function resetRateLimit(ip) {
+  if (redis) {
+    const key = `rate-limit:verify-report:${ip}`;
+    await redis.del(key);
+  } else {
+    memoryRateLimiter.delete(ip);
+  }
+}
 
 export const ReportController = {
   /**
@@ -174,6 +230,23 @@ export const ReportController = {
    */
   async verifyReport(req, res, next) {
     try {
+      const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || '127.0.0.1';
+      const captchaToken = req.headers['x-captcha-token'];
+
+      const { limitExceeded } = await checkRateLimit(ip);
+      if (limitExceeded) {
+        if (!captchaToken) {
+          throw new AppError('Verification threshold exceeded. CAPTCHA required.', 'CAPTCHA_REQUIRED', 403);
+        }
+        
+        const isVerified = await TurnstileService.verifyToken(captchaToken, ip);
+        if (!isVerified) {
+          throw new AppError('CAPTCHA verification failed.', 'CAPTCHA_FAILED', 400);
+        }
+        
+        await resetRateLimit(ip);
+      }
+
       const { qrVerificationId } = req.params;
 
       const report = await Report.findOne({ qrVerificationId, isDeleted: { $ne: true } })
@@ -219,6 +292,25 @@ export const ReportController = {
         },
         'Report verified successfully'
       );
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * POST /api/reports/:id/amend
+   * Phase 3.6 — Amends a delivered/generated report.
+   * Archives old PDF to R2, increments version, re-triggers PDF generation with AMENDED watermark.
+   */
+  async amendReport(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { amendmentReason } = req.body;
+      const labId = req.user.labId;
+      const pathologistId = req.user.userId;
+
+      const result = await ReportService.amendReport(labId, id, amendmentReason, pathologistId);
+      return sendSuccess(res, result, `Report v${result.version} amendment queued for regeneration`);
     } catch (error) {
       next(error);
     }

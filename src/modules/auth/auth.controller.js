@@ -7,6 +7,8 @@ import { AppError } from '../../utils/errors.js';
 import { PERMISSIONS } from '../../config/permissions.js';
 import EmailService from '../../utils/email.js';
 import WhatsAppService from '../../utils/whatsapp.js';
+import { AdminService } from '../admin/admin.service.js';
+import { calculateBlindIndex } from '../../utils/crypto.js';
 
 const AuthController = {
   /**
@@ -34,7 +36,8 @@ const AuthController = {
       } else {
         // If user does not exist in DB, verify if they have any clinical Patient records on Pehlix
         if (phone) {
-          patientRecord = await Patient.findOne({ phone, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
+          const blindIndex = calculateBlindIndex(phone, 'phone');
+          patientRecord = await Patient.findOne({ phoneBlindIndex: blindIndex, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
         } else if (email) {
           patientRecord = await Patient.findOne({ email, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
         }
@@ -147,7 +150,8 @@ const AuthController = {
         // Find most recent Patient record to resolve name and auto-provision the User record
         let patientRecord = null;
         if (phone) {
-          patientRecord = await Patient.findOne({ phone, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
+          const blindIndex = calculateBlindIndex(phone, 'phone');
+          patientRecord = await Patient.findOne({ phoneBlindIndex: blindIndex, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
         } else if (email) {
           patientRecord = await Patient.findOne({ email, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
         }
@@ -288,7 +292,13 @@ const AuthController = {
         permissions
       });
 
-      return sendSuccess(res, { accessToken }, 'Access token refreshed successfully');
+      const userObj = user.toObject();
+      delete userObj.passwordHash;
+      delete userObj.deviceHistory;
+      delete userObj.tokenVersion;
+      delete userObj.__v;
+
+      return sendSuccess(res, { accessToken, user: userObj }, 'Access token refreshed successfully');
     } catch (error) {
       next(error);
     }
@@ -346,6 +356,23 @@ const AuthController = {
       await user.save();
 
       return sendSuccess(res, null, 'Password set successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Laboratory self-registration (public)
+   */
+  async registerLab(req, res, next) {
+    try {
+      const labData = {
+        ...req.body,
+        plan: 'starter' // Enforce starter plan for self-registration
+      };
+      
+      const result = await AdminService.createLab(labData, 'self-registered');
+      return sendSuccess(res, result, 'Laboratory registered successfully and owner account provisioned', 201);
     } catch (error) {
       next(error);
     }
