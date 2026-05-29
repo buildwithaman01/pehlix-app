@@ -27,7 +27,7 @@ async function setSuperAdminPassword() {
     console.log('Updating superAdmin user in database...');
     superAdmin.email = email;
     superAdmin.phone = '9999999999';
-    superAdmin.password = hashedPassword;
+    superAdmin.passwordHash = hashedPassword;
     superAdmin.isOtpOnly = false;
     superAdmin.isActive = true;
     
