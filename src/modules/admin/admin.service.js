@@ -173,8 +173,8 @@ export const AdminService = {
     const lab = new Lab({
       name: data.labName,
       slug,
-      phone: data.phone,
-      email: data.email,
+      phone: data.phone || data.ownerPhone,
+      email: data.email || data.ownerEmail,
       address: {
         city: data.city
       },

@@ -140,3 +140,46 @@ Implemented a manual click-to-chat `wa.me` outbox delivery system alongside auto
 * **Verification**:
   - Run the validation suite `scratch/test_whatsapp_outbox.js` confirming 100% green test outcomes for booking link population, pathologist approval deduplication, status transition callbacks, expiry refresh, dynamic invoice status syncing, and multi-tenant security checks.
   - Production build compiled successfully under Next.js 16.2.6 (Turbopack), verifying absolute route health.
+
+---
+
+## 14. Dashboard UI Contrast & Overlay Fixes
+
+### 14.1 Root Cause Analysis
+* **Unscoped prefers-color-scheme**: In [globals.css](file:///m:/pehlix/pehlix-app/app/globals.css), the `@media (prefers-color-scheme: dark)` media query was overriding `--background` to `#0a0a0a` (dark) and `--foreground` to `#ededed` (near-white) whenever system/browser dark mode was active.
+* **Theme Clash**: Since all layout and dashboard pages use hardcoded light-mode background classes (e.g. `bg-neutral-light`, `bg-white`), but UI components from shadcn/ui (like tables, tabs, outline buttons, input placeholders, and sheet titles) rely on `var(--background)` and `var(--foreground)`, this caused critical contrast issues:
+  - Table headers and active tab text rendered white-on-white.
+  - Buttons and tabs had incorrect black backgrounds or dark overlays clashing with the light theme.
+  - Sheet titles and form borders became invisible or misaligned.
+
+### 14.2 Resolution Steps
+1. **Removed the media query**: Removed the `@media (prefers-color-scheme: dark)` block from [globals.css](file:///m:/pehlix/pehlix-app/app/globals.css), ensuring `:root` variables remain at their high-contrast light-mode defaults (`--background` as white, `--foreground` as dark graphite).
+2. **Preserved `.dark` selector**: Kept the `.dark` class block intact, so if a dedicated dark-mode toggle is implemented in the future, it can be clean and scoped rather than polluting the light theme automatically via system settings.
+
+### 14.3 Verification
+* Tested compilation health by running a Next.js production build (`npm run build`). Verification output compiles cleanly with **0 errors**.
+
+---
+
+## 15. Lab Self-Registration Validation Fix
+
+### 15.1 Root Cause Analysis
+* **Required Schema Fields**: The Lab Mongoose schema ([lab.model.js](file:///m:/pehlix/pehlix-app/src/modules/staff/lab.model.js)) marks `phone` and `email` as `required: true`.
+* **Missing Payload Fields**: The public signup form on the login page (`/register`) submits `ownerPhone` and `ownerEmail` for the owner user account provisioning, but does not collect or send separate `phone` and `email` properties for the laboratory entity itself.
+* **Validation Exception**: Inside `AdminService.createLab` ([admin.service.js](file:///m:/pehlix/pehlix-app/src/modules/admin/admin.service.js)), the new Lab document instantiation used `phone: data.phone` and `email: data.email`. Since these were undefined during self-registration, Mongoose threw a validation error (`ValidationError: Lab validation failed: phone: Path phone is required.`), causing the API call to fail with a generic frontend toast.
+
+### 15.2 Resolution Steps
+1. **Added Fallback Property Chains**: Modified [admin.service.js](file:///m:/pehlix/pehlix-app/src/modules/admin/admin.service.js) to fall back to the owner's details if lab-specific contacts are not provided:
+   ```javascript
+   phone: data.phone || data.ownerPhone,
+   email: data.email || data.ownerEmail,
+   ```
+   This ensures that self-registered labs default their primary contact phone/email to the owner's phone/email, while admin-provisioned labs continue to support custom separate values.
+
+### 15.3 Verification
+* **Automated Test**: Created and ran the test script `scratch/test_lab_registration.js` which simulates a self-registration payload (omitting `phone` and `email`). The script executed successfully:
+  - Created the new lab document using fallback phone/email numbers.
+  - Successfully seeded the standard test catalog.
+  - Created the owner user account linked to the lab.
+  - Successfully ran database cleanup.
+* **Build Check**: Ran Next.js production compile to verify route and types integrity.
