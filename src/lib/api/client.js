@@ -32,7 +32,11 @@ apiClient.interceptors.response.use(
       if (originalRequest.url.includes('/auth/refresh')) {
         useAuthStore.getState().clearUser();
         if (typeof window !== 'undefined') {
-          window.location.href = '/login';
+          const path = window.location.pathname;
+          const isAuthPage = ['/login', '/register', '/otp', '/set-password'].includes(path);
+          if (!isAuthPage) {
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(error);
       }
@@ -60,7 +64,11 @@ apiClient.interceptors.response.use(
         // On failure or second 401, clear auth store and redirect to /login
         useAuthStore.getState().clearUser();
         if (typeof window !== 'undefined') {
-          window.location.href = '/login';
+          const path = window.location.pathname;
+          const isAuthPage = ['/login', '/register', '/otp', '/set-password'].includes(path);
+          if (!isAuthPage) {
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(refreshError);
       }
