@@ -9,6 +9,8 @@ import authRouter from './modules/auth/auth.routes.js';
 
 const app = express();
 
+app.set('trust proxy', true);
+
 // Standard middleware in the exact requested order:
 // 1. express.json()
 app.use(express.json());

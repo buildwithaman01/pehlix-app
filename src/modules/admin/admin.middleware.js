@@ -19,7 +19,10 @@ export function superAdminAuth(req, res, next) {
     }
 
     // IP whitelist verification
-    let clientIp = req.ip || req.socket.remoteAddress || '';
+    let clientIp = req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || '';
+    if (clientIp.includes(',')) {
+      clientIp = clientIp.split(',')[0].trim();
+    }
     if (clientIp === '::1' || clientIp === '::ffff:127.0.0.1') {
       clientIp = '127.0.0.1';
     }
