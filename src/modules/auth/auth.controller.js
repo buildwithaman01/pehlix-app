@@ -68,15 +68,17 @@ const AuthController = {
       
       let emailDispatched = false;
       let whatsappDispatched = false;
+      const dispatchPromises = [];
 
       // 1. Send via Email if recipient has a registered email AND (they logged in via email OR they are staff/owner)
       if (recipientEmail) {
         if (email || isStaffOrOwner) {
-          EmailService.sendOtp(recipientEmail, otp).then(() => {
+          const p = EmailService.sendOtp(recipientEmail, otp).then(() => {
             console.log(`[sendOtp] OTP successfully sent to email: ${recipientEmail}`);
           }).catch((err) => {
             console.error(`[sendOtp] Failed to deliver email to ${recipientEmail}:`, err);
           });
+          dispatchPromises.push(p);
           emailDispatched = true;
         }
       }
@@ -84,11 +86,12 @@ const AuthController = {
       // 2. Send via WhatsApp if recipient has a phone number AND (they logged in via phone OR they are NOT staff/owner)
       if (recipientPhone) {
         if (phone || !isStaffOrOwner) {
-          WhatsAppService.send(recipientPhone, 'otp_verification', { otpCode: otp, patientName }).then(() => {
+          const p = WhatsAppService.send(recipientPhone, 'otp_verification', { otpCode: otp, patientName }).then(() => {
             console.log(`[sendOtp] OTP successfully sent to WhatsApp: ${recipientPhone}`);
           }).catch((err) => {
             console.error(`[sendOtp] Failed to deliver WhatsApp to ${recipientPhone}:`, err);
           });
+          dispatchPromises.push(p);
           whatsappDispatched = true;
         }
       }
@@ -96,14 +99,21 @@ const AuthController = {
       // 3. Fallback: If nothing was dispatched (e.g. phone login but no WhatsApp template match or email missing), try any available channel
       if (!emailDispatched && !whatsappDispatched) {
         if (recipientEmail) {
-          EmailService.sendOtp(recipientEmail, otp).catch((err) => {
+          const p = EmailService.sendOtp(recipientEmail, otp).catch((err) => {
             console.error(`[sendOtp] Fallback email failed:`, err);
           });
+          dispatchPromises.push(p);
         } else if (recipientPhone) {
-          WhatsAppService.send(recipientPhone, 'otp_verification', { otpCode: otp, patientName }).catch((err) => {
+          const p = WhatsAppService.send(recipientPhone, 'otp_verification', { otpCode: otp, patientName }).catch((err) => {
             console.error(`[sendOtp] Fallback WhatsApp failed:`, err);
           });
+          dispatchPromises.push(p);
         }
+      }
+
+      // Await all dispatch promises so Vercel doesn't freeze before completion
+      if (dispatchPromises.length > 0) {
+        await Promise.all(dispatchPromises);
       }
 
       // Phone SMS OTP delivery is kept commented out in the codebase as a future fallback option
