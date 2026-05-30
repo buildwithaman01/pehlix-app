@@ -17,7 +17,7 @@ const transporter = nodemailer.createTransport({
 const resendApiBreaker = new CircuitBreaker({
   failureThreshold: 5,
   cooldownMs: 30000,
-  timeoutMs: 3000,
+  timeoutMs: 10000,
   name: 'ResendAPI'
 });
 
