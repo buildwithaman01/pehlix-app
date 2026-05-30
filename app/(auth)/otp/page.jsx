@@ -63,7 +63,9 @@ function OtpForm() {
     setLoading(true);
     try {
       const payload = phone ? { phone, otp: otpCode } : { email, otp: otpCode };
+      console.log('[OTP] Submitting OTP verification:', payload);
       const res = await apiClient.post('/auth/verify-otp', payload);
+      console.log('[OTP] Verification response:', res.data);
       const { user, accessToken } = res.data.data;
       setUser(user, accessToken);
       toast.success(`Welcome back, ${user.name || 'there'}!`);
@@ -86,7 +88,8 @@ function OtpForm() {
         router.push('/dashboard');
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Invalid OTP. Try again.');
+      console.error('[OTP] Verification error:', err);
+      toast.error(err?.response?.data?.error?.message || err?.response?.data?.message || 'Invalid OTP. Try again.');
       setDigits(['', '', '', '', '', '']);
       inputs.current[0]?.focus();
     } finally {

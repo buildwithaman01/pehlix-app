@@ -68,7 +68,7 @@ const AuthService = {
         throw new AppError('OTP has expired or does not exist. (In development, you can use "123456")', 'AUTH_OTP_EXPIRED', 400);
       }
 
-      if (storedOtp !== inputOtp) {
+      if (String(storedOtp) !== String(inputOtp)) {
         throw new AppError('Invalid OTP. (In development, you can use "123456")', 'AUTH_OTP_INVALID', 400);
       }
 
@@ -76,35 +76,44 @@ const AuthService = {
       return true;
     }
 
+    console.log(`[VERIFY_OTP] Starting verification for: ${phone}`);
     const isLocked = await redis.get(`otp:locked:${phone}`);
     if (isLocked) {
+      console.log(`[VERIFY_OTP] Identifier ${phone} is locked`);
       throw new AppError('Too many failed attempts. Number locked for 30 minutes.', 'AUTH_OTP_MAX_ATTEMPTS', 429);
     }
 
     const storedOtp = await redis.get(`otp:${phone}`);
+    console.log(`[VERIFY_OTP] Retrieved stored OTP: ${storedOtp} (type: ${typeof storedOtp}) for ${phone}`);
     if (!storedOtp) {
+      console.log(`[VERIFY_OTP] No OTP found in Redis for ${phone} (either expired or not requested)`);
       throw new AppError('OTP has expired or does not exist.', 'AUTH_OTP_EXPIRED', 400);
     }
 
     const attemptsKey = `otp:attempts:${phone}`;
     const attempts = await redis.incr(attemptsKey);
+    console.log(`[VERIFY_OTP] Attempts incremented to: ${attempts} for ${phone}`);
     
     if (attempts === 1) {
       await redis.expire(attemptsKey, 300); // 5 minutes TTL
     }
 
     if (attempts >= 3) {
+      console.log(`[VERIFY_OTP] Too many failed attempts. Locking ${phone}`);
       await redis.set(`otp:locked:${phone}`, 'locked', { ex: 1800 }); // 30 minutes lockout
       await redis.del(`otp:${phone}`);
       await redis.del(attemptsKey);
       throw new AppError('Too many failed attempts. Number locked for 30 minutes.', 'AUTH_OTP_MAX_ATTEMPTS', 429);
     }
 
-    if (storedOtp !== inputOtp) {
+    const matches = String(storedOtp) === String(inputOtp);
+    console.log(`[VERIFY_OTP] Comparing storedOtp (${storedOtp}) vs inputOtp (${inputOtp}) -> matches: ${matches}`);
+    if (!matches) {
       throw new AppError('Invalid OTP.', 'AUTH_OTP_INVALID', 400);
     }
 
     // Cleanup on successful verification
+    console.log(`[VERIFY_OTP] Successful verification for ${phone}. Cleaning up keys...`);
     await redis.del(`otp:${phone}`);
     await redis.del(attemptsKey);
     return true;
