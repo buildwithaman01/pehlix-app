@@ -33,23 +33,28 @@ export const EmailService = {
     }
 
     const callResendApi = async () => {
-      const response = await axios.post(
-        'https://api.resend.com/emails',
-        {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${config.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
           from: config.SMTP_FROM || 'Pehlix Health <noreply@pehlix.in>',
           to: [to],
           subject,
           html: html || text,
           text: text || html
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${config.RESEND_API_KEY}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      return { messageId: response.data?.id || 'resend-mock-id' };
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Resend API returned status ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      return { messageId: data?.id || 'resend-mock-id' };
     };
 
     const handleFallback = async (error) => {
