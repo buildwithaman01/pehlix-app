@@ -319,7 +319,7 @@ export const ResultService = {
       labId,
       resultId: result._id,
       visitId,
-      patientId: visit.patientId?._id,
+      patientId: visit.patientId?._id || visit.patientId,
       testId,
       testName: testMasterDoc.name,
       action: isUpdate ? 'updated' : 'created',
@@ -431,7 +431,7 @@ export const ResultService = {
       labId,
       resultId: result._id,
       visitId,
-      patientId: visit.patientId?._id,
+      patientId: visit.patientId?._id || visit.patientId,
       testId: result.testId?._id,
       testName,
       action: 'flagged_critical',
@@ -470,14 +470,17 @@ export const ResultService = {
     result.criticalAcknowledgedBy = alertId;
     await result.save();
 
+    const visitDoc = await Visit.findById(result.visitId).select('patientId').lean();
+    const patientId = visitDoc?.patientId;
+
     // Phase 3.2 — Audit entry for acknowledgement
     ResultAudit.create({
       labId: result.labId,
       resultId: result._id,
       visitId: result.visitId,
-      patientId: null,
+      patientId: patientId,
       action: 'critical_acknowledged',
-      performedBy: result.enteredBy || result.approvedBy,
+      performedBy: result.enteredBy || result.approvedBy || result.rejectedBy || result._id,
       acknowledgedBy: alertId,
       before: null,
       after: { acknowledgedAt: result.criticalAcknowledgedAt }
@@ -568,13 +571,15 @@ export const ResultService = {
 
     // Fetch pathologist name for audit
     const pathologist = await User.findById(pathologistId).select('name role').lean();
+    const visitDoc = await Visit.findById(result.visitId).select('patientId').lean();
+    const patientId = visitDoc?.patientId;
 
     // Phase 3.2 — Write audit entry
     ResultAudit.create({
       labId,
       resultId: result._id,
       visitId: result.visitId,
-      patientId: null,
+      patientId: patientId,
       testId: result.testId,
       action: 'approved',
       performedBy: pathologistId,
@@ -777,7 +782,7 @@ export const ResultService = {
       labId,
       resultId: result._id,
       visitId: result.visitId,
-      patientId: visit?.patientId?._id,
+      patientId: visit?.patientId?._id || visit?.patientId,
       testId: result.testId,
       testName: testMasterDoc.name,
       action: 'updated',
@@ -806,13 +811,15 @@ export const ResultService = {
     await result.save();
 
     const pathologist = await User.findById(pathologistId).select('name role').lean();
+    const visitDoc = await Visit.findById(result.visitId).select('patientId').lean();
+    const patientId = visitDoc?.patientId;
 
     // Phase 3.2 — Audit entry with mandatory reason
     ResultAudit.create({
       labId,
       resultId: result._id,
       visitId: result.visitId,
-      patientId: null,
+      patientId: patientId,
       testId: result.testId,
       action: 'rejected',
       performedBy: pathologistId,
