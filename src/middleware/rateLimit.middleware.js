@@ -1,6 +1,32 @@
 import rateLimit from 'express-rate-limit';
+import * as Sentry from '@sentry/nextjs';
 
 const isDev = process.env.NODE_ENV !== 'production';
+
+/**
+ * Custom IP extraction key generator for rate limiters in serverless/Vercel environments.
+ * Handles comma-separated lists in x-forwarded-for, falls back to x-real-ip, req.socket.remoteAddress,
+ * and finally 'unknown' (with a Sentry breadcrumb log).
+ */
+export const getClientIp = (req) => {
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = forwarded 
+    ? forwarded.split(',')[0].trim() 
+    : req.headers['x-real-ip'] || req.socket?.remoteAddress || 'unknown';
+
+  if (ip === 'unknown') {
+    Sentry.addBreadcrumb({
+      category: 'rate-limit',
+      message: 'IP address resolved as unknown in keyGenerator',
+      level: 'warning',
+      data: {
+        headers: req.headers,
+        url: req.originalUrl || req.url
+      }
+    });
+  }
+  return ip;
+};
 
 /**
  * Rate limiter for OTP requests: max 3 requests per 15 minutes per IP.
@@ -10,6 +36,7 @@ export const otpRateLimit = rateLimit({
   max: 3,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: getClientIp,
   skip: () => isDev,
   message: {
     status: 'error',
@@ -26,6 +53,7 @@ export const loginRateLimit = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: getClientIp,
   skip: () => isDev,
   message: {
     status: 'error',
@@ -42,6 +70,7 @@ export const generalRateLimit = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: getClientIp,
   skip: () => isDev,
   message: {
     status: 'error',
@@ -58,6 +87,7 @@ export const publicRateLimit = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: getClientIp,
   skip: () => isDev,
   message: {
     status: 'error',

@@ -4,6 +4,7 @@ import WhatsAppOutboxController from './whatsappOutbox.controller.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { verifyTenant } from '../../middleware/tenant.middleware.js';
 import { authorize } from '../../middleware/rbac.middleware.js';
+import { getClientIp } from '../../middleware/rateLimit.middleware.js';
 
 const router = Router();
 
@@ -13,6 +14,7 @@ const outboxPollRateLimit = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: getClientIp,
   skip: () => process.env.NODE_ENV !== 'production',
   message: {
     status: 'error',
