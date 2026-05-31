@@ -8,7 +8,7 @@ export const createVisitSchema = z.object({
     patientId: z.string().regex(mongoIdRegex, 'Invalid patient ID'),
     visitType: z.enum(['walkIn', 'homeCollection', 'centerPickup']),
     tests: z.array(z.string().regex(mongoIdRegex, 'Invalid test ID')).min(1, 'At least one test must be selected'),
-    referredBy: z.string().regex(mongoIdRegex, 'Invalid referredBy doctor ID').optional().or(z.literal('')),
+    referredBy: z.string().regex(mongoIdRegex, 'Invalid referredBy doctor ID').optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
     notes: z.string().trim().optional(),
     scheduledDate: z.preprocess((val) => {
       if (!val) return undefined;
@@ -27,15 +27,18 @@ export const addTestsSchema = z.object({
 export function validateRequest(schema) {
   return async (req, res, next) => {
     try {
-      await schema.parseAsync({
+      const parsed = await schema.parseAsync({
         body: req.body,
         query: req.query,
         params: req.params
       });
+      req.body = parsed.body;
+      req.query = parsed.query;
+      req.params = parsed.params;
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const details = error.errors.reduce((acc, err) => {
+        const details = error.issues.reduce((acc, err) => {
           const field = err.path.slice(1).join('.') || 'field';
           acc[field] = err.message;
           return acc;

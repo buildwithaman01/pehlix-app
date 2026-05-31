@@ -21,8 +21,8 @@ export const createPatientSchema = z.object({
     email: z.string().email('Invalid email format').trim().optional().or(z.literal('')),
     address: addressSchema.optional(),
     bloodGroup: z.string().trim().optional(),
-    referredBy: z.string().regex(mongoIdRegex, 'Invalid referredBy doctor ID').optional().or(z.literal('')),
-    familyAccountId: z.string().regex(mongoIdRegex, 'Invalid familyAccountId').optional().or(z.literal('')),
+    referredBy: z.string().regex(mongoIdRegex, 'Invalid referredBy doctor ID').optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
+    familyAccountId: z.string().regex(mongoIdRegex, 'Invalid familyAccountId').optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
     consentGiven: z.literal(true, {
       errorMap: () => ({ message: 'Patient consent must be given' })
     })
@@ -40,15 +40,15 @@ export const updatePatientSchema = z.object({
     email: z.string().email('Invalid email format').trim().optional().or(z.literal('')),
     address: addressSchema.optional(),
     bloodGroup: z.string().trim().optional(),
-    referredBy: z.string().regex(mongoIdRegex, 'Invalid referredBy doctor ID').optional().or(z.literal('')),
-    familyAccountId: z.string().regex(mongoIdRegex, 'Invalid familyAccountId').optional().or(z.literal('')),
+    referredBy: z.string().regex(mongoIdRegex, 'Invalid referredBy doctor ID').optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
+    familyAccountId: z.string().regex(mongoIdRegex, 'Invalid familyAccountId').optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
     consentGiven: z.boolean().optional()
   })
 });
 
 export const searchPatientSchema = z.object({
   query: z.object({
-    q: z.string().min(1, 'Search query must not be empty'),
+    q: z.string().trim().optional(),
     page: z.coerce.number().int().positive().default(1),
     limit: z.coerce.number().int().positive().default(10)
   })
@@ -57,15 +57,18 @@ export const searchPatientSchema = z.object({
 export function validateRequest(schema) {
   return async (req, res, next) => {
     try {
-      await schema.parseAsync({
+      const parsed = await schema.parseAsync({
         body: req.body,
         query: req.query,
         params: req.params
       });
+      req.body = parsed.body;
+      req.query = parsed.query;
+      req.params = parsed.params;
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const details = error.errors.reduce((acc, err) => {
+        const details = error.issues.reduce((acc, err) => {
           const field = err.path.slice(1).join('.') || 'field';
           acc[field] = err.message;
           return acc;

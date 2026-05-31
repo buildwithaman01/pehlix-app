@@ -43,15 +43,18 @@ export const payCommissionSchema = z.object({
 export function validateRequest(schema) {
   return async (req, res, next) => {
     try {
-      await schema.parseAsync({
+      const parsed = await schema.parseAsync({
         body: req.body,
         query: req.query,
         params: req.params
       });
+      req.body = parsed.body;
+      req.query = parsed.query;
+      req.params = parsed.params;
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const details = error.errors.reduce((acc, err) => {
+        const details = error.issues.reduce((acc, err) => {
           const field = err.path.slice(1).join('.') || 'field';
           acc[field] = err.message;
           return acc;
