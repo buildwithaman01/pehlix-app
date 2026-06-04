@@ -347,6 +347,18 @@ function NewVisitContent() {
   const [amountPaid, setAmountPaid] = useState('');
   const [createdVisit, setCreatedVisit] = useState(null);
 
+  const { data: preselectedPatient } = useQuery({
+    queryKey: ['patient', preselectedPatientId],
+    queryFn: () => patientsApi.getById(preselectedPatientId),
+    enabled: !!preselectedPatientId,
+  });
+
+  useEffect(() => {
+    if (preselectedPatient) {
+      setPatient(preselectedPatient);
+    }
+  }, [preselectedPatient]);
+
   const createVisitMutation = useMutation({
     mutationFn: visitsApi.create,
     onSuccess: (visit) => {
@@ -380,6 +392,10 @@ function NewVisitContent() {
   }
 
   function handleConfirm() {
+    if (!patient) {
+      toast.error('Patient details are not loaded yet. Please wait.');
+      return;
+    }
     const subtotal = selectedTests.reduce((s, t) => s + (t.price || t.basePrice || 0), 0);
     const gst = Math.round(subtotal * GST_RATE);
     const totalAmount = subtotal + gst;
