@@ -6,7 +6,7 @@ const mongoIdRegex = /^[0-9a-fA-F]{24}$/;
 export const createVisitSchema = z.object({
   body: z.object({
     patientId: z.string().regex(mongoIdRegex, 'Invalid patient ID'),
-    visitType: z.enum(['walkIn', 'homeCollection', 'centerPickup']),
+    visitType: z.enum(['walkIn', 'homeCollection', 'centerPickup']).optional().default('walkIn'),
     tests: z.array(z.string().regex(mongoIdRegex, 'Invalid test ID')).min(1, 'At least one test must be selected'),
     referredBy: z.string().regex(mongoIdRegex, 'Invalid referredBy doctor ID').optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
     notes: z.string().trim().optional(),
@@ -14,7 +14,10 @@ export const createVisitSchema = z.object({
       if (!val) return undefined;
       const date = new Date(val);
       return isNaN(date.getTime()) ? undefined : date;
-    }, z.date().optional())
+    }, z.date().optional()),
+    paymentMethod: z.enum(['cash', 'upi', 'card', 'partial', 'credit']).optional().default('cash'),
+    amountPaid: z.number().min(0).optional(),
+    totalAmount: z.number().min(0).optional()
   })
 });
 

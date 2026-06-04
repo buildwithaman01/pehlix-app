@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import Visit from './visit.model.js';
 import Invoice from '../billing/invoice.model.js';
 import LabTest from '../staff/labTest.model.js';
+import Payment from '../billing/payment.model.js';
+import DoctorService from '../doctors/doctor.service.js';
 import { AppError } from '../../utils/errors.js';
 
 export const VisitService = {
@@ -58,9 +60,25 @@ export const VisitService = {
     // Generate visit code
     const visitCode = await this.generateVisitCode(labId);
 
+    const {
+      patientId,
+      visitType = 'walkIn',
+      tests,
+      referredBy,
+      notes,
+      scheduledDate,
+      paymentMethod = 'cash',
+      amountPaid = 0
+    } = data;
+
     // Create visit record
     const visit = new Visit({
-      ...data,
+      patientId,
+      visitType,
+      tests,
+      referredBy,
+      notes,
+      scheduledDate,
       labId,
       visitCode,
       registeredBy: createdBy,
@@ -73,8 +91,8 @@ export const VisitService = {
     await visit.save();
 
     // Fetch prices from LabTest collection
-    const labTests = await LabTest.find({ labId, _id: { $in: data.tests } });
-    if (labTests.length !== data.tests.length) {
+    const labTests = await LabTest.find({ labId, _id: { $in: tests } });
+    if (labTests.length !== tests.length) {
       throw new AppError('Some selected tests are invalid or not found for this lab', 'TEST_NOT_FOUND', 404);
     }
 
@@ -84,7 +102,7 @@ export const VisitService = {
       return acc;
     }, {});
 
-    const lineItems = data.tests.map(testIdStr => {
+    const lineItems = tests.map(testIdStr => {
       const lt = testsMap[testIdStr];
       return {
         testId: lt._id,
@@ -104,23 +122,71 @@ export const VisitService = {
     // Generate invoice code
     const invoiceCode = await this.generateInvoiceCode(labId);
 
+    // Calculate actual payment details
+    let finalAmountPaid = 0;
+    if (paymentMethod === 'credit') {
+      finalAmountPaid = 0;
+    } else if (paymentMethod === 'partial') {
+      finalAmountPaid = amountPaid;
+    } else {
+      // cash, upi, card
+      finalAmountPaid = totalAmount;
+    }
+
+    const balanceAmount = totalAmount - finalAmountPaid;
+    let paymentStatus = 'pending';
+    if (finalAmountPaid >= totalAmount) {
+      paymentStatus = 'paid';
+    } else if (finalAmountPaid > 0) {
+      paymentStatus = 'partial';
+    }
+
     // Create invoice document
     const invoice = new Invoice({
       labId,
       visitId: visit._id,
-      patientId: data.patientId,
+      patientId,
       invoiceCode,
       lineItems,
       subtotal,
       gstRate,
       gstAmount,
       totalAmount,
-      amountPaid: 0,
-      balanceAmount: totalAmount,
-      paymentStatus: 'pending'
+      amountPaid: finalAmountPaid,
+      balanceAmount,
+      paymentStatus
     });
 
     await invoice.save();
+
+    // Create Payment transaction record if payment was made
+    if (finalAmountPaid > 0) {
+      const mappedMethod = ['cash', 'upi', 'card'].includes(paymentMethod) ? paymentMethod : 'cash';
+      await Payment.create({
+        labId,
+        invoiceId: invoice._id,
+        patientId,
+        amount: finalAmountPaid,
+        method: mappedMethod,
+        status: 'success',
+        collectedBy: createdBy,
+        notes: `Collected at registration via ${paymentMethod}`
+      });
+    }
+
+    // Trigger doctor commission calculation if the invoice is fully paid
+    if (paymentStatus === 'paid') {
+      try {
+        await DoctorService.calculateAndRecordCommission(
+          labId,
+          visit._id,
+          invoice._id,
+          totalAmount
+        );
+      } catch (err) {
+        console.error('[VisitService] Failed to calculate and record doctor commission:', err);
+      }
+    }
 
     // Update visit with invoiceId
     visit.invoiceId = invoice._id;
