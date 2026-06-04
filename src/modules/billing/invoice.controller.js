@@ -10,6 +10,54 @@ import { config } from '../../config/index.js';
 
 export const InvoiceController = {
   /**
+   * Fetch all invoices for a lab
+   */
+  async getInvoices(req, res, next) {
+    try {
+      const { search, paymentStatus, page = 1, limit = 50 } = req.query;
+      const labId = req.user.labId;
+
+      const query = { labId, isDeleted: { $ne: true } };
+
+      if (paymentStatus) {
+        query.paymentStatus = paymentStatus;
+      }
+
+      if (search) {
+        query.invoiceCode = { $regex: search, $options: 'i' };
+      }
+
+      const skip = (page - 1) * limit;
+
+      const [invoices, total] = await Promise.all([
+        Invoice.find(query)
+          .populate('patientId', 'firstName lastName phone')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(parseInt(limit))
+          .lean(),
+        Invoice.countDocuments(query)
+      ]);
+
+      // Format response to match frontend expectations
+      const formattedInvoices = invoices.map(inv => ({
+        ...inv,
+        patientName: inv.patientId ? `${inv.patientId.firstName} ${inv.patientId.lastName || ''}`.trim() : 'Unknown Patient'
+      }));
+
+      return sendSuccess(res, {
+        invoices: formattedInvoices,
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / limit)
+      }, 'Invoices retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
    * Generates a Razorpay payment link for an invoice.
    * Uses the Lab's specific Razorpay keys.
    */

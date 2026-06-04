@@ -12,6 +12,7 @@ invoiceRouter.use(authenticate);
 invoiceRouter.use(verifyTenant);
 
 // Expose endpoints
+invoiceRouter.get('/', generalRateLimit, authorize('owner', 'receptionist', 'technician'), InvoiceController.getInvoices);
 invoiceRouter.post('/:id/payment-link', generalRateLimit, authorize('owner', 'receptionist', 'technician'), InvoiceController.generatePaymentLink);
 invoiceRouter.post('/:id/record-payment', generalRateLimit, authorize('owner', 'receptionist'), InvoiceController.recordManualPayment);
 invoiceRouter.post('/:id/waive', generalRateLimit, authorize('owner'), InvoiceController.waiveInvoice);
