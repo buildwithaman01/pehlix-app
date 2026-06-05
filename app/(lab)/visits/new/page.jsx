@@ -457,7 +457,7 @@ function InvoiceStep({ selectedTests, paymentMethod, setPaymentMethod, amountPai
             <SelectValue placeholder="Select referring doctor" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">None / Self</SelectItem>
+            <SelectItem value="none">None / Self</SelectItem>
             {doctors.map(d => (
               <SelectItem key={d._id} value={d._id}>Dr. {d.name} {d.specialization ? `(${d.specialization})` : ''}</SelectItem>
             ))}
@@ -519,7 +519,7 @@ function NewVisitContent() {
   const [selectedTests, setSelectedTests] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [amountPaid, setAmountPaid] = useState('');
-  const [referredBy, setReferredBy] = useState('');
+  const [referredBy, setReferredBy] = useState('none');
   const [createdVisit, setCreatedVisit] = useState(null);
 
   const { data: preselectedPatient } = useQuery({
@@ -581,7 +581,7 @@ function NewVisitContent() {
       paymentMethod,
       amountPaid: paymentMethod === 'partial' ? Number(amountPaid) : paymentMethod === 'credit' ? 0 : totalAmount,
       totalAmount,
-      referredBy: referredBy || undefined,
+      referredBy: referredBy && referredBy !== 'none' ? referredBy : undefined,
     });
   }
 
