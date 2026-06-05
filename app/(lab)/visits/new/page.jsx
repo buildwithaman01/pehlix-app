@@ -6,6 +6,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { patientsApi } from '@/lib/api/patients.api';
 import { visitsApi } from '@/lib/api/visits.api';
 import { testsApi } from '@/lib/api/tests.api';
+import { doctorsApi } from '@/lib/api/extended.api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,6 +55,9 @@ function StepIndicator({ current }) {
 function PatientStep({ patientId, onSelect }) {
   const [phone, setPhone] = useState('');
   const [searched, setSearched] = useState(false);
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [newPatient, setNewPatient] = useState({ firstName: '', lastName: '', gender: 'M', age: '', ageUnit: 'years' });
+  const [isCreating, setIsCreating] = useState(false);
 
   const { data: autofilled, isLoading: autoLoading, refetch } = useQuery({
     queryKey: ['patient-autofill', phone],
@@ -75,8 +79,27 @@ function PatientStep({ patientId, onSelect }) {
 
   async function handleLookup() {
     setSearched(true);
+    setShowNewForm(false);
     const result = await refetch();
     if (result.data) onSelect(result.data);
+  }
+
+  async function handleCreatePatient() {
+    try {
+      if (!newPatient.firstName || !newPatient.age || !phone) {
+        toast.error('First name, age, and phone are required');
+        return;
+      }
+      setIsCreating(true);
+      const payload = { ...newPatient, phone, age: Number(newPatient.age) };
+      const created = await patientsApi.create(payload);
+      toast.success('Patient registered successfully!');
+      onSelect(created);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to register patient');
+    } finally {
+      setIsCreating(false);
+    }
   }
 
   if (existingPatient) {
@@ -125,18 +148,68 @@ function PatientStep({ patientId, onSelect }) {
         </div>
       </div>
 
-      {searched && !autoLoading && !autofilled && (
+      {searched && !autoLoading && !autofilled && !showNewForm && (
         <div className="rounded-2xl border border-dashed border-neutral-300 p-5 text-center">
           <User className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
           <p className="text-sm font-medium text-neutral-600">No patient found for this number</p>
-          <p className="text-xs text-neutral-400 mt-1">Register a new patient first, then create the visit</p>
-          <Button variant="outline" size="sm" className="mt-3 rounded-xl" onClick={() => window.location.href = '/patients'}>
-            Go to Patients
+          <p className="text-xs text-neutral-400 mt-1">Would you like to register a new patient?</p>
+          <Button size="sm" className="mt-3 rounded-xl bg-[#0F3D3E] hover:bg-[#0a2e2f] text-white" onClick={() => setShowNewForm(true)}>
+            <Plus className="w-4 h-4 mr-1" /> Add Patient Inline
           </Button>
         </div>
       )}
 
-      {searchResults?.patients?.length > 0 && (
+      {showNewForm && (
+        <div className="rounded-2xl border border-neutral-200 p-5 bg-white space-y-4">
+          <p className="text-sm font-semibold text-[#1E1E1E]">Register New Patient</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-neutral-500">First Name *</Label>
+              <Input className="h-9 text-sm" value={newPatient.firstName} onChange={e => setNewPatient({...newPatient, firstName: e.target.value})} placeholder="e.g. Rahul" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-neutral-500">Last Name</Label>
+              <Input className="h-9 text-sm" value={newPatient.lastName} onChange={e => setNewPatient({...newPatient, lastName: e.target.value})} placeholder="e.g. Sharma" />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-neutral-500">Age *</Label>
+              <Input type="number" className="h-9 text-sm" value={newPatient.age} onChange={e => setNewPatient({...newPatient, age: e.target.value})} placeholder="e.g. 35" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-neutral-500">Unit</Label>
+              <Select value={newPatient.ageUnit} onValueChange={v => setNewPatient({...newPatient, ageUnit: v})}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="years">Years</SelectItem>
+                  <SelectItem value="months">Months</SelectItem>
+                  <SelectItem value="days">Days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-neutral-500">Gender</Label>
+              <Select value={newPatient.gender} onValueChange={v => setNewPatient({...newPatient, gender: v})}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="M">Male</SelectItem>
+                  <SelectItem value="F">Female</SelectItem>
+                  <SelectItem value="O">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1 rounded-xl h-10" onClick={() => setShowNewForm(false)}>Cancel</Button>
+            <Button className="flex-1 rounded-xl h-10 bg-[#5FB3A5] hover:bg-[#4a8f84] text-white" disabled={isCreating} onClick={handleCreatePatient}>
+              {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Register & Select'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {searchResults?.patients?.length > 0 && !showNewForm && (
         <div className="space-y-2">
           {searchResults.patients.slice(0, 4).map(p => (
             <button key={p._id} onClick={() => onSelect(p)}
@@ -151,6 +224,9 @@ function PatientStep({ patientId, onSelect }) {
               <Badge variant="outline" className="text-xs">{p.patientCode}</Badge>
             </button>
           ))}
+          <Button variant="ghost" className="w-full text-sm text-[#5FB3A5] hover:bg-[#5FB3A5]/10 hover:text-[#0F3D3E]" onClick={() => setShowNewForm(true)}>
+            <Plus className="w-4 h-4 mr-1" /> Add Family Member
+          </Button>
         </div>
       )}
     </div>
@@ -253,7 +329,13 @@ function TestStep({ selectedTests, onAdd, onRemove }) {
   );
 }
 
-function InvoiceStep({ selectedTests, paymentMethod, setPaymentMethod, amountPaid, setAmountPaid }) {
+function InvoiceStep({ selectedTests, paymentMethod, setPaymentMethod, amountPaid, setAmountPaid, referredBy, setReferredBy }) {
+  const { data: doctorsData } = useQuery({
+    queryKey: ['doctors'],
+    queryFn: () => doctorsApi.getList(),
+  });
+  const doctors = doctorsData?.doctors || doctorsData || [];
+
   const subtotal = selectedTests.reduce((s, t) => s + (t.price || t.basePrice || 0), 0);
   const gst = Math.round(subtotal * GST_RATE);
   const total = subtotal + gst;
@@ -289,6 +371,22 @@ function InvoiceStep({ selectedTests, paymentMethod, setPaymentMethod, amountPai
             <span>₹{total.toLocaleString('en-IN')}</span>
           </div>
         </div>
+      </div>
+
+      {/* Referring Doctor */}
+      <div>
+        <Label className="text-sm font-medium text-[#1E1E1E] mb-2 block">Referring Doctor (Optional)</Label>
+        <Select value={referredBy} onValueChange={setReferredBy}>
+          <SelectTrigger className="w-full h-11 rounded-xl">
+            <SelectValue placeholder="Select referring doctor" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">None / Self</SelectItem>
+            {doctors.map(d => (
+              <SelectItem key={d._id} value={d._id}>Dr. {d.name} {d.specialization ? `(${d.specialization})` : ''}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Payment method */}
@@ -345,6 +443,7 @@ function NewVisitContent() {
   const [selectedTests, setSelectedTests] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [amountPaid, setAmountPaid] = useState('');
+  const [referredBy, setReferredBy] = useState('');
   const [createdVisit, setCreatedVisit] = useState(null);
 
   const { data: preselectedPatient } = useQuery({
@@ -396,16 +495,14 @@ function NewVisitContent() {
       toast.error('Patient details are not loaded yet. Please wait.');
       return;
     }
-    const subtotal = selectedTests.reduce((s, t) => s + (t.price || t.basePrice || 0), 0);
-    const gst = Math.round(subtotal * GST_RATE);
-    const totalAmount = subtotal + gst;
-
+    const totalAmount = selectedTests.reduce((s, t) => s + (t.price || t.basePrice || 0), 0) * (1 + GST_RATE);
     createVisitMutation.mutate({
       patientId: patient._id,
       tests: selectedTests.map(t => t._id),
       paymentMethod,
-      amountPaid: paymentMethod === 'partial' ? Number(amountPaid) : paymentMethod !== 'credit' ? totalAmount : 0,
+      amountPaid: paymentMethod === 'partial' ? Number(amountPaid) : paymentMethod === 'credit' ? 0 : totalAmount,
       totalAmount,
+      referredBy: referredBy || undefined,
     });
   }
 
@@ -455,12 +552,14 @@ function NewVisitContent() {
             <TestStep selectedTests={selectedTests} onAdd={addTest} onRemove={removeTest} />
           )}
           {step === 2 && (
-            <InvoiceStep
-              selectedTests={selectedTests}
-              paymentMethod={paymentMethod}
+            <InvoiceStep 
+              selectedTests={selectedTests} 
+              paymentMethod={paymentMethod} 
               setPaymentMethod={setPaymentMethod}
               amountPaid={amountPaid}
               setAmountPaid={setAmountPaid}
+              referredBy={referredBy}
+              setReferredBy={setReferredBy}
             />
           )}
         </div>

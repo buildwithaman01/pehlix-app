@@ -21,7 +21,8 @@ import {
   Activity,
   Shield,
   Bell,
-  FlaskConical
+  FlaskConical,
+  Plus
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -173,6 +174,14 @@ export default function LabLayout({ children }) {
         <div className="flex items-center h-16 px-6 border-b border-teal-soft/20">
           <PehlixLogo variant="wordmark" className="text-xl" light={true} />
         </div>
+
+        <div className="px-4 py-4 border-b border-teal-soft/20">
+          <Link href="/visits/new" className="flex items-center justify-center gap-2 w-full py-2.5 bg-teal-soft text-emerald-deep rounded-lg font-bold hover:bg-white transition-colors shadow-sm">
+            <Plus className="w-5 h-5" />
+            New Visit
+          </Link>
+        </div>
+
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -226,6 +235,18 @@ export default function LabLayout({ children }) {
                   <X className="w-6 h-6" />
                 </button>
               </div>
+
+              <div className="pb-2 border-b border-teal-soft/20">
+                <Link 
+                  href="/visits/new" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 bg-teal-soft text-emerald-deep rounded-lg font-bold hover:bg-white transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  New Visit
+                </Link>
+              </div>
+
               <nav className="space-y-1">
                 {navItems.map((item) => {
                   const Icon = item.icon;
