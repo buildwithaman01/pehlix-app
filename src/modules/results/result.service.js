@@ -589,7 +589,7 @@ export const ResultService = {
    * Retrieves pathologist approval queue. Prioritizes critical results.
    */
   async getApprovalQueue(labId) {
-    return await Result.find({ labId, isApproved: false, isDeleted: { $ne: true } })
+    const results = await Result.find({ labId, isApproved: false, isDeleted: { $ne: true } })
       .populate({
         path: 'visitId',
         populate: [
@@ -597,8 +597,50 @@ export const ResultService = {
           { path: 'referredBy', select: 'name phone email' }
         ]
       })
-      .populate('testId', 'name code department')
-      .sort({ isCritical: -1, createdAt: 1 });
+      .populate('testId', 'name code department parameters')
+      .sort({ isCritical: -1, createdAt: 1 })
+      .lean();
+
+    return results.map(r => {
+      const patient = r.visitId?.patientId || {};
+      const pAge = patient.age;
+      const pAgeUnit = patient.ageUnit;
+      const pGender = patient.gender;
+      const testMaster = r.testId || {};
+
+      const mappedParams = (r.parameters || []).map(p => {
+        let refStr = p.referenceRange;
+        if (!refStr && testMaster.parameters) {
+          const match = testMaster.parameters.find(mp => mp.name?.toLowerCase().trim() === p.parameterName?.toLowerCase().trim());
+          if (match) {
+            const range = this.selectReferenceRange(match, pAge, pAgeUnit, pGender);
+            if (range.normalLow != null && range.normalHigh != null) {
+              refStr = `${range.normalLow}–${range.normalHigh}`;
+            }
+          }
+        }
+        return {
+          ...p,
+          referenceRange: refStr || null
+        };
+      });
+
+      return {
+        _id: r._id.toString(),
+        visitId: r.visitId?._id?.toString(),
+        testId: testMaster._id?.toString(),
+        testName: testMaster.name || 'Lab Test',
+        patientName: patient.firstName ? `${patient.firstName} ${patient.lastName || ''}`.trim() : 'Unknown Patient',
+        patientAge: pAge,
+        patientAgeUnit: pAgeUnit,
+        patientGender: pGender,
+        referredBy: r.visitId?.referredBy?.name,
+        isCritical: r.isCritical,
+        createdAt: r.createdAt,
+        parameters: mappedParams,
+        abnormalCount: mappedParams.filter(p => p.isFlagged).length
+      };
+    });
   },
 
   /**

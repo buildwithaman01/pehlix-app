@@ -42,7 +42,7 @@ function ResultRow({ param, value, flag }) {
       isCritical ? 'bg-red-50/50 border-l-2 border-l-red-400 -ml-px' :
       isAbnormal ? 'bg-amber-50/30 border-l-2 border-l-amber-300 -ml-px' : ''
     )}>
-      <span className="text-sm text-neutral-700 font-medium col-span-1">{param.name}</span>
+      <span className="text-sm text-neutral-700 font-medium col-span-1">{param.name || param.parameterName}</span>
       <span className={cn(
         'text-sm font-bold col-span-1',
         isCritical ? 'text-red-600' :
@@ -53,9 +53,11 @@ function ResultRow({ param, value, flag }) {
         {value ?? '—'} <span className="text-xs font-normal text-neutral-400">{param.unit}</span>
       </span>
       <span className="text-xs text-neutral-400 col-span-1">
-        {param.normalLow != null && param.normalHigh != null
-          ? `${param.normalLow}–${param.normalHigh}`
-          : '—'
+        {param.referenceRange
+          ? param.referenceRange
+          : param.normalLow != null && param.normalHigh != null
+            ? `${param.normalLow}–${param.normalHigh}`
+            : '—'
         }
       </span>
       <div className="col-span-1 flex justify-end">
@@ -221,7 +223,7 @@ export default function ReportsPage() {
 
       {/* Approval Review Dialog */}
       <Dialog open={!!selectedItem} onOpenChange={(o) => !o && setSelectedItem(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl p-8">
+        <DialogContent className="w-[95vw] max-w-none sm:max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 sm:p-8">
           {selectedItem && (
             <>
               <DialogHeader className="mb-6">
