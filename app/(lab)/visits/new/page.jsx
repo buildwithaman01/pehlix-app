@@ -56,7 +56,7 @@ function PatientStep({ patientId, onSelect }) {
   const [phone, setPhone] = useState('');
   const [searched, setSearched] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
-  const [newPatient, setNewPatient] = useState({ firstName: '', lastName: '', gender: 'M', age: '', ageUnit: 'years', referredBy: 'none' });
+  const [newPatient, setNewPatient] = useState({ firstName: '', lastName: '', gender: 'male', age: '', ageUnit: 'years', referredBy: 'none' });
   const [isCreating, setIsCreating] = useState(false);
 
   const { data: doctorsData } = useQuery({
@@ -97,7 +97,7 @@ function PatientStep({ patientId, onSelect }) {
         return;
       }
       setIsCreating(true);
-      const payload = { ...newPatient, phone, age: Number(newPatient.age) };
+      const payload = { ...newPatient, phone, age: Number(newPatient.age), consentGiven: true, consentMethod: 'staff_entry' };
       if (payload.referredBy === 'none') {
         delete payload.referredBy;
       }
@@ -202,9 +202,9 @@ function PatientStep({ patientId, onSelect }) {
               <Select value={newPatient.gender} onValueChange={v => setNewPatient({...newPatient, gender: v})}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="M">Male</SelectItem>
-                  <SelectItem value="F">Female</SelectItem>
-                  <SelectItem value="O">Other</SelectItem>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>

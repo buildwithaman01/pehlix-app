@@ -723,32 +723,36 @@ export const ResultService = {
           : 'Patient';
         const phone = invoice.patientId?.phone;
 
+        const visit = await Visit.findOne({ _id: result.visitId, labId }).populate('tests');
+        const testNames = visit ? visit.tests.map(t => t.name) : [];
+
+        // ALWAYS create the outbox entry. It serves as the unified queue for both manual (wa.me) and automated (Meta API) flows.
+        if (report) {
+          await WhatsAppOutboxService.createOutboxEntry(
+            labId,
+            result.visitId,
+            invoice.patientId._id,
+            report._id,
+            invoice,
+            invoice.patientId,
+            testNames
+          );
+        }
+
         const isWaMe = !lab?.planConfig?.features?.communicationMode || lab.planConfig.features.communicationMode === 'waMe';
 
-        if (isWaMe) {
-          const visit = await Visit.findOne({ _id: result.visitId, labId }).populate('tests');
-          const testNames = visit ? visit.tests.map(t => t.name) : [];
+        // Regardless of mode, we must trigger PDF generation.
+        // For Meta API mode, the background cron job `processOutboxToMeta` will pick it up once pdfStatus becomes 'ready'.
+        // For waMe mode, it stays in the Outbox for the receptionist to click "Send".
+        const pdfEndpoint = `${config.NEXT_PUBLIC_APP_URL}/api/internal/reports/generate`;
+        await qstashService.enqueue(pdfEndpoint, {
+          visitId: result.visitId.toString(),
+          labId: labId.toString(),
+          invoiceId: invoice._id.toString()
+        });
 
-          if (report) {
-            await WhatsAppOutboxService.createOutboxEntry(
-              labId,
-              result.visitId,
-              invoice.patientId._id,
-              report._id,
-              invoice,
-              invoice.patientId,
-              testNames
-            );
-          }
-
-          const pdfEndpoint = `${config.NEXT_PUBLIC_APP_URL}/api/internal/reports/generate`;
-          await qstashService.enqueue(pdfEndpoint, {
-            visitId: result.visitId.toString(),
-            labId: labId.toString(),
-            invoiceId: invoice._id.toString()
-          });
-        } else {
-          // Meta API Automated Flow
+        if (!isWaMe) {
+          // Meta API Automated Flow for UNPAID paywall (sent immediately before PDF is ready)
           if (balance > 0) {
             let paymentLink = invoice.razorpayPaymentLinkUrl;
 
@@ -798,13 +802,6 @@ export const ResultService = {
               );
             }
           } else {
-            const pdfEndpoint = `${config.NEXT_PUBLIC_APP_URL}/api/internal/reports/generate`;
-            await qstashService.enqueue(pdfEndpoint, {
-              visitId: result.visitId.toString(),
-              labId: labId.toString(),
-              invoiceId: invoice._id.toString()
-            });
-
             const reportLink = `${config.NEXT_PUBLIC_APP_URL}/reports/view/${result.visitId}`;
             const reportCode = report ? (report.reportCode || invoice.invoiceCode) : invoice.invoiceCode;
 
