@@ -164,8 +164,8 @@ function DoctorDetail({ doctor }) {
     queryFn: () => doctorsApi.getCommissions(doctor._id),
   });
 
-  const patients = patientsData?.patients || patientsData || [];
-  const commissions = commissionsData?.commissions || commissionsData || [];
+  const patients = patientsData?.visits || patientsData?.patients || (Array.isArray(patientsData) ? patientsData : []);
+  const commissions = commissionsData?.commissions || (Array.isArray(commissionsData) ? commissionsData : []);
 
   const sendStatement = useMutation({
     mutationFn: () => doctorsApi.sendStatement(doctor._id),
