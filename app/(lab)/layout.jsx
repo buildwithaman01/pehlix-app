@@ -31,7 +31,7 @@ const NAV_ITEMS = [
   { name: 'Results', href: '/results', icon: FlaskConical },
   { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'Billing', href: '/billing', icon: CreditCard },
-  { name: 'Doctors', href: '/doctors', icon: UserSquare2 },
+  { name: 'Referral Network', href: '/doctors', icon: UserSquare2 },
   { name: 'Inventory', href: '/inventory', icon: Package },
   { name: 'Staff', href: '/staff', icon: ShieldAlert },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },

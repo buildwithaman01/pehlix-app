@@ -18,6 +18,8 @@ import {
   ArrowRight, User, FlaskConical, Receipt, CreditCard, Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import CreatableSelect from 'react-select/creatable';
+import { useQueryClient } from '@tanstack/react-query';
 
 const STEPS = ['Patient', 'Tests', 'Invoice', 'Confirm'];
 const PAYMENT_METHODS = ['cash', 'upi', 'card', 'partial', 'credit'];
@@ -58,6 +60,29 @@ function PatientStep({ patientId, onSelect }) {
   const [showNewForm, setShowNewForm] = useState(false);
   const [newPatient, setNewPatient] = useState({ firstName: '', lastName: '', gender: 'male', age: '', ageUnit: 'years', referredBy: 'none' });
   const [isCreating, setIsCreating] = useState(false);
+  const qc = useQueryClient();
+
+  const createReferrerMutation = useMutation({
+    mutationFn: (name) => doctorsApi.create({
+      name,
+      referrerType: 'agent',
+      phone: '',
+      commissionType: 'none',
+      commissionValue: 0,
+      portalAccess: false
+    }),
+    onSuccess: (newAgent) => {
+      toast.success(`Agent ${newAgent.name} added`);
+      qc.invalidateQueries(['doctors']);
+      setNewPatient(prev => ({ ...prev, referredBy: newAgent._id }));
+    },
+    onError: (err) => toast.error(err?.response?.data?.message || 'Failed to create agent')
+  });
+
+  function handleCreateReferrer(inputValue) {
+    if (!inputValue.trim()) return;
+    createReferrerMutation.mutate(inputValue.trim());
+  }
 
   const { data: doctorsData } = useQuery({
     queryKey: ['doctors'],
@@ -209,19 +234,47 @@ function PatientStep({ patientId, onSelect }) {
               </Select>
             </div>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 z-50 relative pb-14">
             <Label className="text-xs text-neutral-500">Referring Doctor / Agent</Label>
-            <Select value={newPatient.referredBy} onValueChange={v => setNewPatient({...newPatient, referredBy: v})}>
-              <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select Referrer" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Self / No Referral</SelectItem>
-                {doctors.map(d => (
-                  <SelectItem key={d._id} value={d._id}>
-                    {d.name} {d.qualification ? `(${d.qualification})` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CreatableSelect
+              isClearable
+              isDisabled={createReferrerMutation.isPending}
+              isLoading={createReferrerMutation.isPending}
+              onChange={(newValue) => setNewPatient(f => ({ ...f, referredBy: newValue ? newValue.value : 'none' }))}
+              onCreateOption={handleCreateReferrer}
+              options={[
+                { value: 'none', label: 'Self / No Referral' },
+                ...doctors.map(d => ({
+                  value: d._id,
+                  label: `${d.name} ${d.qualification ? `(${d.qualification})` : ''} - ${d.referrerType === 'agent' ? 'Agent' : 'Doctor'}`
+                }))
+              ]}
+              value={
+                newPatient.referredBy === 'none' 
+                  ? { value: 'none', label: 'Self / No Referral' }
+                  : { 
+                      value: newPatient.referredBy, 
+                      label: doctors.find(d => d._id === newPatient.referredBy)?.name || 'Unknown' 
+                    }
+              }
+              placeholder="Select or type to create agent..."
+              formatCreateLabel={(inputValue) => `Create agent "${inputValue}"`}
+              styles={{
+                control: (base) => ({
+                  ...base,
+                  borderRadius: '0.5rem',
+                  borderColor: '#E5E5E5',
+                  minHeight: '36px',
+                  boxShadow: 'none',
+                  fontSize: '0.875rem',
+                  '&:hover': { borderColor: '#0F3D3E' }
+                }),
+                menu: (base) => ({
+                  ...base,
+                  zIndex: 9999
+                })
+              }}
+            />
           </div>
           <div className="flex gap-2 pt-2">
             <Button variant="outline" className="flex-1 rounded-xl h-10" onClick={() => setShowNewForm(false)}>Cancel</Button>

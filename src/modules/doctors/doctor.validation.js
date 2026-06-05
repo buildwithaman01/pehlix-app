@@ -4,7 +4,8 @@ import { sendError } from '../../utils/response.js';
 export const createDoctorSchema = z.object({
   body: z.object({
     name: z.string().min(2, 'Name must be at least 2 characters').trim(),
-    phone: z.string().length(10, 'Phone must be exactly 10 digits').regex(/^\d{10}$/, 'Phone must contain only numbers'),
+    referrerType: z.enum(['doctor', 'agent']).default('doctor'),
+    phone: z.string().regex(/^\d{10}$/, 'Phone must contain exactly 10 digits').optional().or(z.literal('')),
     qualification: z.string().trim().optional(),
     email: z.string().email('Invalid email format').trim().optional().or(z.literal('')),
     specialization: z.string().trim().optional(),
@@ -18,7 +19,8 @@ export const createDoctorSchema = z.object({
 export const updateDoctorSchema = z.object({
   body: z.object({
     name: z.string().min(2, 'Name must be at least 2 characters').trim().optional(),
-    phone: z.string().length(10, 'Phone must be exactly 10 digits').regex(/^\d{10}$/, 'Phone must contain only numbers').optional(),
+    referrerType: z.enum(['doctor', 'agent']).optional(),
+    phone: z.string().regex(/^\d{10}$/, 'Phone must contain exactly 10 digits').optional().or(z.literal('')),
     qualification: z.string().trim().optional(),
     email: z.string().email('Invalid email format').trim().optional().or(z.literal('')),
     specialization: z.string().trim().optional(),

@@ -12,13 +12,18 @@ const doctorSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  referrerType: {
+    type: String,
+    enum: ['doctor', 'agent'],
+    default: 'doctor',
+    index: true
+  },
   qualification: {
     type: String,
     trim: true
   },
   phone: {
     type: String,
-    required: true,
     trim: true
   },
   email: {

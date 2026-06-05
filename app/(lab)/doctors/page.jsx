@@ -24,12 +24,12 @@ import { cn } from '@/lib/utils';
 const COMMISSION_TYPES = ['none', 'percentage', 'flat'];
 const ROLES_DOC = ['MD','MBBS','MS','DNB','DM','PhD'];
 
-function AddDoctorDialog({ open, onClose, editDoctor = null }) {
+function AddReferrerDialog({ open, onClose, editDoctor = null, defaultType = 'doctor' }) {
   const qc = useQueryClient();
   const [form, setForm] = useState(editDoctor || {
     name: '', phone: '', qualification: '', specialization: '',
     registrationNumber: '', email: '', commissionType: 'none',
-    commissionValue: '', portalAccess: false,
+    commissionValue: '', portalAccess: false, referrerType: defaultType
   });
 
   const mutation = useMutation({
@@ -37,7 +37,7 @@ function AddDoctorDialog({ open, onClose, editDoctor = null }) {
       ? (data) => doctorsApi.update(editDoctor._id, data)
       : doctorsApi.create,
     onSuccess: () => {
-      toast.success(editDoctor ? 'Doctor updated' : 'Doctor added');
+      toast.success(editDoctor ? 'Updated successfully' : 'Added successfully');
       qc.invalidateQueries(['doctors']);
       onClose();
     },
@@ -46,7 +46,8 @@ function AddDoctorDialog({ open, onClose, editDoctor = null }) {
 
   function handleSubmit(e) {
     e.preventDefault();
-    if (!form.name || !form.phone) { toast.error('Name and phone required'); return; }
+    if (!form.name) { toast.error('Name is required'); return; }
+    if (form.portalAccess && !form.phone) { toast.error('Phone is required for portal access'); return; }
     mutation.mutate({
       ...form,
       commissionValue: form.commissionValue ? Number(form.commissionValue) : 0,
@@ -55,34 +56,52 @@ function AddDoctorDialog({ open, onClose, editDoctor = null }) {
 
   const f = (k) => (v) => setForm(prev => ({ ...prev, [k]: v }));
 
+  const isAgent = form.referrerType === 'agent';
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md rounded-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-[#1E1E1E]">{editDoctor ? 'Edit Doctor' : 'Add Doctor'}</DialogTitle>
+          <DialogTitle className="text-[#1E1E1E]">
+            {editDoctor ? `Edit ${isAgent ? 'Agent' : 'Doctor'}` : `Add ${isAgent ? 'Agent' : 'Doctor'}`}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3 mt-2">
+          <div className="flex gap-4 mb-2">
+            <Label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" checked={!isAgent} onChange={() => f('referrerType')('doctor')} />
+              Doctor
+            </Label>
+            <Label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" checked={isAgent} onChange={() => f('referrerType')('agent')} />
+              Agent
+            </Label>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5 col-span-2">
               <Label>Full Name <span className="text-red-500">*</span></Label>
-              <Input value={form.name} onChange={e => f('name')(e.target.value)} className="rounded-xl" placeholder="Dr. Anil Gupta" />
+              <Input value={form.name} onChange={e => f('name')(e.target.value)} className="rounded-xl" placeholder={isAgent ? "Agent Name" : "Dr. Anil Gupta"} />
             </div>
             <div className="space-y-1.5">
-              <Label>Phone <span className="text-red-500">*</span></Label>
+              <Label>Phone</Label>
               <Input type="tel" maxLength={10} value={form.phone} onChange={e => f('phone')(e.target.value.replace(/\D/g,''))} className="rounded-xl" placeholder="9876543210" />
             </div>
-            <div className="space-y-1.5">
-              <Label>Qualification</Label>
-              <Input value={form.qualification} onChange={e => f('qualification')(e.target.value)} className="rounded-xl" placeholder="MBBS, MD" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Specialization</Label>
-              <Input value={form.specialization} onChange={e => f('specialization')(e.target.value)} className="rounded-xl" placeholder="Cardiology" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Reg. Number</Label>
-              <Input value={form.registrationNumber} onChange={e => f('registrationNumber')(e.target.value)} className="rounded-xl" placeholder="MCI/12345" />
-            </div>
+            {!isAgent && (
+              <>
+                <div className="space-y-1.5">
+                  <Label>Qualification</Label>
+                  <Input value={form.qualification} onChange={e => f('qualification')(e.target.value)} className="rounded-xl" placeholder="MBBS, MD" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Specialization</Label>
+                  <Input value={form.specialization} onChange={e => f('specialization')(e.target.value)} className="rounded-xl" placeholder="Cardiology" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Reg. Number</Label>
+                  <Input value={form.registrationNumber} onChange={e => f('registrationNumber')(e.target.value)} className="rounded-xl" placeholder="MCI/12345" />
+                </div>
+              </>
+            )}
             <div className="space-y-1.5 col-span-2">
               <Label>Email</Label>
               <Input type="email" value={form.email} onChange={e => f('email')(e.target.value)} className="rounded-xl" placeholder="doctor@email.com" />
@@ -125,7 +144,7 @@ function AddDoctorDialog({ open, onClose, editDoctor = null }) {
           <DialogFooter className="gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose} className="rounded-xl">Cancel</Button>
             <Button type="submit" disabled={mutation.isPending} className="rounded-xl bg-[#0F3D3E] hover:bg-[#0a2e2f] text-white">
-              {mutation.isPending ? 'Saving…' : editDoctor ? 'Save Changes' : 'Add Doctor'}
+              {mutation.isPending ? 'Saving…' : editDoctor ? 'Save Changes' : 'Save'}
             </Button>
           </DialogFooter>
         </form>
@@ -165,13 +184,15 @@ function DoctorDetail({ doctor }) {
       {/* Header */}
       <div className="flex items-center gap-3 mb-4 pb-4 border-b border-neutral-100">
         <div className="w-12 h-12 rounded-2xl bg-[#0F3D3E]/8 flex items-center justify-center">
-          <Stethoscope className="w-6 h-6 text-[#0F3D3E]" />
+          {doctor.referrerType === 'agent' ? <UserPlus className="w-6 h-6 text-[#0F3D3E]" /> : <Stethoscope className="w-6 h-6 text-[#0F3D3E]" />}
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-[#1E1E1E]">{doctor.name}</p>
-          <p className="text-sm text-neutral-500">{doctor.qualification} • {doctor.specialization || 'General'}</p>
+          {doctor.referrerType === 'doctor' && (
+            <p className="text-sm text-neutral-500">{doctor.qualification} • {doctor.specialization || 'General'}</p>
+          )}
           <p className="text-xs text-neutral-400 flex items-center gap-1 mt-0.5">
-            <Phone className="w-3 h-3" /> {doctor.phone}
+            <Phone className="w-3 h-3" /> {doctor.phone || 'N/A'}
           </p>
         </div>
         <div className="text-right text-xs text-neutral-500">
@@ -255,10 +276,11 @@ function DoctorDetail({ doctor }) {
 export default function DoctorsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [activeTab, setActiveTab] = useState('doctor');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['doctors'],
-    queryFn: doctorsApi.getList,
+    queryKey: ['doctors', activeTab],
+    queryFn: () => doctorsApi.getList({ referrerType: activeTab }),
   });
 
   const doctors = data?.doctors || data || [];
@@ -266,23 +288,32 @@ export default function DoctorsPage() {
   return (
     <div>
       <PageHeader
-        title="Doctors"
-        subtitle="Manage referral doctors and commission tracking"
+        title="Referral Network"
+        subtitle="Manage referral doctors, agents, and commission tracking"
         action={
           <Button onClick={() => setShowAdd(true)} className="rounded-xl bg-[#0F3D3E] hover:bg-[#0a2e2f] text-white gap-1.5">
-            <UserPlus className="w-4 h-4" /> Add Doctor
+            <UserPlus className="w-4 h-4" /> Add Referrer
           </Button>
         }
       />
 
-      <div className="flex gap-4 h-[calc(100vh-11rem)]">
+      <div className="mb-4">
+        <Tabs value={activeTab} onValueChange={(val) => { setActiveTab(val); setSelectedDoctor(null); }}>
+          <TabsList className="rounded-xl bg-white border border-neutral-200">
+            <TabsTrigger value="doctor" className="rounded-lg">Doctors</TabsTrigger>
+            <TabsTrigger value="agent" className="rounded-lg">Agents</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      <div className="flex gap-4 h-[calc(100vh-14rem)]">
         {/* Doctor List */}
         <div className={cn('overflow-y-auto space-y-2', selectedDoctor ? 'w-72 shrink-0' : 'flex-1')}>
           {isLoading ? (
             <div className="space-y-2">{[1,2,3].map(i=><div key={i} className="h-20 rounded-2xl bg-white animate-pulse"/>)}</div>
           ) : doctors.length === 0 ? (
-            <EmptyState icon={Stethoscope} title="No doctors added" description="Add your first referring doctor to start tracking commissions"
-              action={<Button onClick={() => setShowAdd(true)} className="bg-[#0F3D3E] text-white rounded-xl">Add Doctor</Button>} />
+            <EmptyState icon={activeTab === 'agent' ? UserPlus : Stethoscope} title={`No ${activeTab}s added`} description="Add your first referrer to start tracking commissions"
+              action={<Button onClick={() => setShowAdd(true)} className="bg-[#0F3D3E] text-white rounded-xl">Add {activeTab}</Button>} />
           ) : doctors.map(doc => (
             <div key={doc._id} onClick={() => setSelectedDoctor(doc)}
               className={cn(
@@ -292,9 +323,9 @@ export default function DoctorsPage() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="font-semibold text-sm text-[#1E1E1E] truncate">{doc.name}</p>
-                  {doc.qualification && <p className="text-xs text-neutral-400">{doc.qualification}</p>}
+                  {doc.referrerType === 'doctor' && doc.qualification && <p className="text-xs text-neutral-400">{doc.qualification}</p>}
                   <p className="text-xs text-neutral-400 flex items-center gap-1 mt-1">
-                    <Phone className="w-3 h-3" /> {doc.phone}
+                    <Phone className="w-3 h-3" /> {doc.phone || 'N/A'}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
@@ -314,7 +345,7 @@ export default function DoctorsPage() {
         {selectedDoctor && <DoctorDetail doctor={selectedDoctor} />}
       </div>
 
-      <AddDoctorDialog open={showAdd} onClose={() => setShowAdd(false)} />
+      <AddReferrerDialog open={showAdd} onClose={() => setShowAdd(false)} defaultType={activeTab} />
     </div>
   );
 }

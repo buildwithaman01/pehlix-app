@@ -20,8 +20,8 @@ export const DoctorController = {
   async getDoctors(req, res, next) {
     try {
       const labId = req.user.labId;
-      const { page = 1, limit = 10, isActive } = req.query;
-      const result = await DoctorService.getDoctors(labId, { isActive }, Number(page), Number(limit));
+      const { page = 1, limit = 10, isActive, referrerType } = req.query;
+      const result = await DoctorService.getDoctors(labId, { isActive, referrerType }, Number(page), Number(limit));
       return sendSuccess(res, result, 'Doctors retrieved successfully');
     } catch (error) {
       next(error);

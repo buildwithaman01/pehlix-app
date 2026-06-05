@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { Search, UserPlus, Users, Phone, ChevronRight, Calendar, FlaskConical } from 'lucide-react';
 import { doctorsApi } from '@/lib/api/extended.api';
+import CreatableSelect from 'react-select/creatable';
 
 function useDebounce(value, delay = 350) {
   const [debounced, setDebounced] = useState(value);
@@ -83,6 +84,28 @@ export default function PatientsPage() {
     },
     onError: (err) => toast.error(err?.response?.data?.message || 'Registration failed'),
   });
+
+  const createReferrerMutation = useMutation({
+    mutationFn: (name) => doctorsApi.create({
+      name,
+      referrerType: 'agent',
+      phone: '', // Agents might not have phone recorded initially
+      commissionType: 'none',
+      commissionValue: 0,
+      portalAccess: false
+    }),
+    onSuccess: (newAgent) => {
+      toast.success(`Agent ${newAgent.name} added`);
+      qc.invalidateQueries(['doctors']);
+      setForm(f => ({ ...f, referredBy: newAgent._id }));
+    },
+    onError: (err) => toast.error(err?.response?.data?.message || 'Failed to create agent')
+  });
+
+  function handleCreateReferrer(inputValue) {
+    if (!inputValue.trim()) return;
+    createReferrerMutation.mutate(inputValue.trim());
+  }
 
   function handleRegister(e) {
     e.preventDefault();
@@ -261,19 +284,44 @@ export default function PatientsPage() {
               <Input id="email" type="email" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} className="rounded-xl" placeholder="ravi@email.com" />
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 z-50">
               <Label htmlFor="referredBy">Referring Doctor / Agent</Label>
-              <Select value={form.referredBy} onValueChange={v => setForm(f => ({...f, referredBy: v}))}>
-                <SelectTrigger id="referredBy" className="rounded-xl"><SelectValue placeholder="Select Referrer" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Self / No Referral</SelectItem>
-                  {doctors.map(d => (
-                    <SelectItem key={d._id} value={d._id}>
-                      {d.name} {d.qualification ? `(${d.qualification})` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CreatableSelect
+                isClearable
+                isDisabled={createReferrerMutation.isPending}
+                isLoading={createReferrerMutation.isPending}
+                onChange={(newValue) => setForm(f => ({ ...f, referredBy: newValue ? newValue.value : 'none' }))}
+                onCreateOption={handleCreateReferrer}
+                options={[
+                  { value: 'none', label: 'Self / No Referral' },
+                  ...doctors.map(d => ({
+                    value: d._id,
+                    label: `${d.name} ${d.qualification ? `(${d.qualification})` : ''} - ${d.referrerType === 'agent' ? 'Agent' : 'Doctor'}`
+                  }))
+                ]}
+                value={
+                  form.referredBy === 'none' 
+                    ? { value: 'none', label: 'Self / No Referral' }
+                    : { 
+                        value: form.referredBy, 
+                        label: doctors.find(d => d._id === form.referredBy)?.name || 'Unknown' 
+                      }
+                }
+                placeholder="Select or type to create agent..."
+                formatCreateLabel={(inputValue) => `Create agent "${inputValue}"`}
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderRadius: '0.75rem',
+                    borderColor: '#E5E5E5',
+                    minHeight: '44px',
+                    boxShadow: 'none',
+                    '&:hover': {
+                      borderColor: '#0F3D3E'
+                    }
+                  })
+                }}
+              />
             </div>
 
             <div className="flex items-start space-x-2 pt-3 pb-1 border-t border-neutral-100">

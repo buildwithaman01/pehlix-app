@@ -20,6 +20,9 @@ export const DoctorService = {
     
     // 2. If portalAccess is true, verify or provision User
     if (data.portalAccess === true) {
+      if (!data.phone) {
+        throw new AppError('Phone number is required to enable portal access', 'PHONE_REQUIRED', 400);
+      }
       let user = await User.findOne({ phone: data.phone, role: 'doctor' });
       if (!user) {
         user = await User.create({
@@ -47,6 +50,9 @@ export const DoctorService = {
       const doctor = await Doctor.findOne({ _id: doctorId, labId });
       if (doctor && !doctor.userId) {
         const phone = data.phone || doctor.phone;
+        if (!phone) {
+          throw new AppError('Phone number is required to enable portal access', 'PHONE_REQUIRED', 400);
+        }
         const name = data.name || doctor.name;
         let user = await User.findOne({ phone, role: 'doctor' });
         if (!user) {
@@ -84,6 +90,9 @@ export const DoctorService = {
     
     if (filters.isActive !== undefined) {
       query.isActive = filters.isActive === 'true' || filters.isActive === true;
+    }
+    if (filters.referrerType) {
+      query.referrerType = filters.referrerType;
     }
 
     const total = await Doctor.countDocuments(query);
