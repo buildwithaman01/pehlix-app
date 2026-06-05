@@ -18,9 +18,11 @@ import {
   AlertCircle, Droplet
 } from 'lucide-react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
-export default function PatientDetailPage({ params }) {
-  const { id } = params;
+export default function PatientDetailPage() {
+  const params = useParams();
+  const id = params?.id;
   const [mounted, setMounted] = useState(false);
   const [selectedParam, setSelectedParam] = useState('Haemoglobin');
 
