@@ -406,11 +406,35 @@ function TestStep({ selectedTests, onAdd, onRemove }) {
 }
 
 function InvoiceStep({ selectedTests, paymentMethod, setPaymentMethod, amountPaid, setAmountPaid, referredBy, setReferredBy }) {
+  const qc = useQueryClient();
   const { data: doctorsData } = useQuery({
     queryKey: ['doctors'],
     queryFn: () => doctorsApi.getList(),
   });
   const doctors = doctorsData?.doctors || doctorsData || [];
+
+  const createReferrerMutation = useMutation({
+    mutationFn: (name) => doctorsApi.create({
+      name,
+      referrerType: 'agent',
+      phone: '',
+      commissionType: 'none',
+      commissionValue: 0,
+      portalAccess: false
+    }),
+    onSuccess: (newAgent) => {
+      toast.success(`Agent ${newAgent.name} added`);
+      qc.invalidateQueries(['doctors']);
+      setReferredBy(newAgent._id);
+    },
+    onError: (err) => toast.error(err?.response?.data?.message || 'Failed to create agent')
+  });
+
+  function handleCreateReferrer(inputValue) {
+    if (!inputValue.trim()) return;
+    createReferrerMutation.mutate(inputValue.trim());
+  }
+
 
   const subtotal = selectedTests.reduce((s, t) => s + (t.price || t.basePrice || 0), 0);
   const gst = Math.round(subtotal * GST_RATE);
@@ -450,19 +474,44 @@ function InvoiceStep({ selectedTests, paymentMethod, setPaymentMethod, amountPai
       </div>
 
       {/* Referring Doctor */}
-      <div>
+      <div className="space-y-1.5 z-50 relative pb-8">
         <Label className="text-sm font-medium text-[#1E1E1E] mb-2 block">Referring Doctor (Optional)</Label>
-        <Select value={referredBy} onValueChange={setReferredBy}>
-          <SelectTrigger className="w-full h-11 rounded-xl">
-            <SelectValue placeholder="Select referring doctor" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None / Self</SelectItem>
-            {doctors.map(d => (
-              <SelectItem key={d._id} value={d._id}>Dr. {d.name} {d.specialization ? `(${d.specialization})` : ''}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <CreatableSelect
+          isClearable
+          isDisabled={createReferrerMutation.isPending}
+          isLoading={createReferrerMutation.isPending}
+          onChange={(newValue) => setReferredBy(newValue ? newValue.value : 'none')}
+          onCreateOption={handleCreateReferrer}
+          options={[
+            { value: 'none', label: 'None / Self' },
+            ...doctors.map(d => ({
+              value: d._id,
+              label: `Dr. ${d.name} ${d.specialization ? `(${d.specialization})` : ''} - ${d.referrerType === 'agent' ? 'Agent' : 'Doctor'}`
+            }))
+          ]}
+          value={
+            referredBy === 'none' || !referredBy
+              ? { value: 'none', label: 'None / Self' }
+              : { 
+                  value: referredBy, 
+                  label: doctors.find(d => d._id === referredBy)?.name || 'Unknown' 
+                }
+          }
+          placeholder="Select or type to create agent..."
+          formatCreateLabel={(inputValue) => `Create agent "${inputValue}"`}
+          styles={{
+            control: (base) => ({
+              ...base,
+              borderRadius: '0.75rem',
+              borderColor: '#E5E5E5',
+              minHeight: '44px',
+              boxShadow: 'none',
+              '&:hover': {
+                borderColor: '#0F3D3E'
+              }
+            })
+          }}
+        />
       </div>
 
       {/* Payment method */}
