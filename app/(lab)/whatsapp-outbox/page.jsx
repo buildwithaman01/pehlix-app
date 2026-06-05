@@ -37,7 +37,7 @@ export default function WhatsAppOutboxPage() {
     if (showLoader) setLoading(true);
     try {
       const { data } = await apiClient.get(`/whatsapp-outbox?status=${f}&page=${p}`);
-      if (data.success && data.data) {
+      if (data?.status === 'success' && data.data) {
         setEntries(data.data.entries);
         setTotalPages(data.data.totalPages || Math.ceil(data.data.total / (data.data.limit || 20)) || 1);
       }
@@ -53,7 +53,7 @@ export default function WhatsAppOutboxPage() {
     setIsFetchingStats(true);
     try {
       const { data } = await apiClient.get('/whatsapp-outbox/stats');
-      if (data.success && data.data) {
+      if (data?.status === 'success' && data.data) {
         setStats(data.data);
       }
     } catch (err) {
@@ -88,7 +88,7 @@ export default function WhatsAppOutboxPage() {
     toast.loading('Re-queuing PDF generation...', { id: 'retry-pdf' });
     try {
       const { data } = await apiClient.post(`/whatsapp-outbox/${outboxId}/retry`);
-      if (data.success) {
+      if (data?.status === 'success') {
         toast.success('PDF generation successfully re-queued', { id: 'retry-pdf' });
         // Optimistically set outbox state back to generating
         setEntries(prev => prev.map(entry => 
@@ -116,7 +116,7 @@ export default function WhatsAppOutboxPage() {
 
     try {
       const { data } = await apiClient.patch(`/whatsapp-outbox/${outboxId}/sent`);
-      if (!data.success) {
+      if (data?.status !== 'success') {
         setEntries(previousEntries);
         toast.error('Failed to mark report as sent. Reverting.');
       } else {
