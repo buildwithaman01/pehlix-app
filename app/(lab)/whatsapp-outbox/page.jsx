@@ -14,6 +14,7 @@ import {
   Unlock, Check, AlertTriangle, FileCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { apiClient } from '@/lib/api/client';
 
 export default function WhatsAppOutboxPage() {
   const [entries, setEntries] = useState([]);
@@ -35,8 +36,7 @@ export default function WhatsAppOutboxPage() {
   const fetchOutbox = async (f = filter, p = page, showLoader = false) => {
     if (showLoader) setLoading(true);
     try {
-      const res = await fetch(`/api/whatsapp-outbox?status=${f}&page=${p}`);
-      const data = await res.json();
+      const { data } = await apiClient.get(`/whatsapp-outbox?status=${f}&page=${p}`);
       if (data.success && data.data) {
         setEntries(data.data.entries);
         setTotalPages(data.data.totalPages || Math.ceil(data.data.total / (data.data.limit || 20)) || 1);
@@ -52,8 +52,7 @@ export default function WhatsAppOutboxPage() {
   const fetchStats = async () => {
     setIsFetchingStats(true);
     try {
-      const res = await fetch('/api/whatsapp-outbox/stats');
-      const data = await res.json();
+      const { data } = await apiClient.get('/whatsapp-outbox/stats');
       if (data.success && data.data) {
         setStats(data.data);
       }
@@ -88,8 +87,7 @@ export default function WhatsAppOutboxPage() {
     e.stopPropagation();
     toast.loading('Re-queuing PDF generation...', { id: 'retry-pdf' });
     try {
-      const res = await fetch(`/api/whatsapp-outbox/${outboxId}/retry`, { method: 'POST' });
-      const data = await res.json();
+      const { data } = await apiClient.post(`/whatsapp-outbox/${outboxId}/retry`);
       if (data.success) {
         toast.success('PDF generation successfully re-queued', { id: 'retry-pdf' });
         // Optimistically set outbox state back to generating
@@ -117,8 +115,7 @@ export default function WhatsAppOutboxPage() {
     }).filter(e => filter !== 'ready' || e.status !== 'sent'));
 
     try {
-      const res = await fetch(`/api/whatsapp-outbox/${outboxId}/sent`, { method: 'PATCH' });
-      const data = await res.json();
+      const { data } = await apiClient.patch(`/whatsapp-outbox/${outboxId}/sent`);
       if (!data.success) {
         setEntries(previousEntries);
         toast.error('Failed to mark report as sent. Reverting.');
