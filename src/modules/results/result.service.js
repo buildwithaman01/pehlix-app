@@ -14,6 +14,7 @@ import SmsService from '../../utils/sms.js';
 import { AppError } from '../../utils/errors.js';
 import InventoryService from '../inventory/inventory.service.js';
 import WhatsAppOutboxService from '../whatsappOutbox/whatsappOutbox.service.js';
+import { ReportService } from '../reports/report.service.js';
 import InAppNotification from '../notifications/inAppNotification.model.js';
 import User from '../staff/user.model.js';
 
@@ -683,8 +684,14 @@ export const ResultService = {
       after: { isApproved: true, approvedAt: result.approvedAt, pathologistNote }
     }).catch(err => console.error('[ResultAudit] Failed to write approved audit entry:', err));
 
-    // Find linked report
+    // Find or create linked report
     let report = await Report.findOne({ visitId: result.visitId, labId });
+    if (!report) {
+      const visitDocForReport = await Visit.findById(result.visitId).lean();
+      if (visitDocForReport) {
+        report = await ReportService.createReportRecord(labId, result.visitId, visitDocForReport.patientId);
+      }
+    }
     if (report) {
       if (pathologistNote) {
         report.pathologistNote = pathologistNote;
