@@ -7,6 +7,7 @@ import config from '../../config/index.js';
 import { AppError } from '../../utils/errors.js';
 import Invoice from '../billing/invoice.model.js';
 import WhatsAppService from '../../utils/whatsapp.js';
+import User from '../staff/user.model.js';
 
 // Initialize Redis client for stats caching
 const redis = new Redis({
