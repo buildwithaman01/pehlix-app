@@ -7,10 +7,12 @@ export const metadata = {
   robots: { index: false },
 };
 
-export default function VerifyPage({ params }) {
+export default async function VerifyPage({ params }) {
+  const { id } = await params;
+
   return (
     <Suspense fallback={<VerifyLoading />}>
-      <VerifyClient id={params.id} />
+      <VerifyClient id={id} />
     </Suspense>
   );
 }
