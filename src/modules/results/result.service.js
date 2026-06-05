@@ -344,7 +344,6 @@ export const ResultService = {
     if (!visit) {
       throw new AppError('Visit not found', 'VISIT_NOT_FOUND', 404);
     }
-
     const patientDemographics = {
       age: visit.patientId?.age,
       ageUnit: visit.patientId?.ageUnit || 'years',
@@ -352,14 +351,27 @@ export const ResultService = {
     };
 
     // 2. Find test master record
-    const testMasterDoc = await TestMaster.findById(testId);
+    let testMasterDoc = await TestMaster.findById(testId);
+    let labTest = null;
+    const LabTestModel = mongoose.model('LabTest');
+
     if (!testMasterDoc) {
-      throw new AppError('Test catalog record not found', 'TEST_NOT_FOUND', 404);
+      // The frontend might have passed the LabTest ID instead of the TestMaster ID
+      labTest = await LabTestModel.findOne({ _id: testId, labId });
+      if (labTest) {
+        testMasterDoc = await TestMaster.findById(labTest.testId);
+      }
+      if (!testMasterDoc) {
+        throw new AppError('Test catalog record not found', 'TEST_NOT_FOUND', 404);
+      }
+    } else {
+      // It was a TestMaster ID. Check for custom parameter overrides in LabTest (Arch Rule #3)
+      labTest = await LabTestModel.findOne({ labId, testId });
     }
 
-    // Check for custom parameter overrides in LabTest (Arch Rule #3)
-    const LabTestModel = mongoose.model('LabTest');
-    const labTest = await LabTestModel.findOne({ labId, testId });
+    // Always use the canonical TestMaster ID for the result document
+    const actualTestMasterId = testMasterDoc._id;
+
     if (labTest && labTest.customParameters && labTest.customParameters.length > 0) {
       testMasterDoc.parameters = labTest.customParameters;
     }
@@ -373,7 +385,7 @@ export const ResultService = {
     );
 
     // 5. Create or Update Result document
-    let result = await Result.findOne({ labId, visitId, testId, isDeleted: { $ne: true } });
+    let result = await Result.findOne({ labId, visitId, testId: actualTestMasterId, isDeleted: { $ne: true } });
     const beforeSnapshot = result ? result.parameters.toObject ? result.parameters.toObject() : result.parameters : null;
     const isUpdate = !!result;
 
