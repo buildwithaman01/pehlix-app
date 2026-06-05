@@ -5,6 +5,19 @@ import { AppError } from '../../utils/errors.js';
 
 export const ResultController = {
   /**
+   * Fetch the active work queue for the lab
+   */
+  async getWorkQueue(req, res, next) {
+    try {
+      const labId = req.user.labId;
+      const queue = await ResultService.getWorkQueue(labId);
+      return sendSuccess(res, queue, 'Work queue retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
    * Submit results. Handles critical value warnings before saving.
    */
   async submitResult(req, res, next) {

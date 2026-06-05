@@ -50,6 +50,68 @@ async function notifyLabStaff(labId, type, severity, title, message, link, meta 
 
 export const ResultService = {
   /**
+   * Retrieves the work queue consisting of pending tests from visits
+   */
+  async getWorkQueue(labId) {
+    const VisitModel = mongoose.model('Visit');
+    const ResultModel = mongoose.model('Result');
+    const TestMasterModel = mongoose.model('TestMaster');
+
+    const visits = await VisitModel.find({
+      labId,
+      status: { $in: ['registered', 'sampleCollected', 'processing'] }
+    }).populate('patientId').populate('tests');
+
+    const visitIds = visits.map(v => v._id);
+    const existingResults = await ResultModel.find({
+      labId,
+      visitId: { $in: visitIds },
+      isDeleted: { $ne: true }
+    });
+
+    const enteredSet = new Set(existingResults.map(r => `${r.visitId.toString()}_${r.testId.toString()}`));
+    const queue = [];
+    const testMasterCache = {};
+
+    for (const visit of visits) {
+      if (!visit.tests) continue;
+      for (const test of visit.tests) {
+        if (!enteredSet.has(`${visit._id.toString()}_${test._id.toString()}`)) {
+           let parameters = [];
+           
+           if (test.customParameters && test.customParameters.length > 0) {
+             parameters = test.customParameters;
+           } else {
+             if (!testMasterCache[test.testId]) {
+                const tm = await TestMasterModel.findById(test.testId).lean();
+                testMasterCache[test.testId] = tm;
+             }
+             if (testMasterCache[test.testId]) {
+                parameters = testMasterCache[test.testId].parameters || [];
+             }
+           }
+
+           queue.push({
+             _id: `${visit._id.toString()}_${test._id.toString()}`,
+             visitId: visit._id,
+             testId: test._id,
+             sampleId: null,
+             barcodeId: visit.visitCode,
+             patientName: visit.patientId ? `${visit.patientId.firstName} ${visit.patientId.lastName}` : 'Unknown Patient',
+             testName: test.name,
+             priority: 'routine',
+             isCritical: false,
+             parameters: parameters,
+             createdAt: visit.createdAt
+           });
+        }
+      }
+    }
+
+    return queue;
+  },
+
+  /**
    * Phase 3.4 — Selects the most demographically specific reference range for a parameter.
    * Priority: gender-specific + age match > any-gender + age match > flat default.
    */

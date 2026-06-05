@@ -16,6 +16,12 @@ const router = Router();
 router.use(authenticate);
 router.use(verifyTenant);
 
+router.get(
+  '/worklist',
+  authorize('owner', 'technician'),
+  ResultController.getWorkQueue
+);
+
 router.post(
   '/',
   authorize('owner', 'technician'),
