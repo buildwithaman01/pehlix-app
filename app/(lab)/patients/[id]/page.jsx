@@ -19,12 +19,28 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import apiClient from '@/lib/api/client';
+import { toast } from 'sonner';
 
 export default function PatientDetailPage() {
   const params = useParams();
   const id = params?.id;
   const [mounted, setMounted] = useState(false);
   const [selectedParam, setSelectedParam] = useState('Haemoglobin');
+
+  const handleViewReport = async (reportId) => {
+    try {
+      const res = await apiClient.get(`/reports/${reportId}/url`);
+      const url = res.data?.data?.signedUrl;
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        toast.error('Could not load report PDF URL.');
+      }
+    } catch (err) {
+      toast.error('Failed to load PDF.');
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -283,11 +299,13 @@ export default function PatientDetailPage() {
                             {/* Action Buttons */}
                             <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-zinc-800/80">
                               {report?.pdfUrl && (
-                                <a href={report.pdfUrl} target="_blank" rel="noopener noreferrer">
-                                  <Button size="sm" className="bg-[#0F3D3E] hover:bg-[#186466] text-white gap-1.5 text-xs rounded-lg px-3">
-                                    <FileText className="h-3.5 w-3.5" /> View Report PDF
-                                  </Button>
-                                </a>
+                                <Button 
+                                  onClick={() => handleViewReport(report.reportId)}
+                                  size="sm" 
+                                  className="bg-[#0F3D3E] hover:bg-[#186466] text-white gap-1.5 text-xs rounded-lg px-3"
+                                >
+                                  <FileText className="h-3.5 w-3.5" /> View Report PDF
+                                </Button>
                               )}
                               <Link href={`/billing`}>
                                 <Button variant="outline" size="sm" className="text-xs rounded-lg px-3">
