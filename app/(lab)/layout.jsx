@@ -20,12 +20,14 @@ import {
   MessageSquare,
   Activity,
   Shield,
-  Bell
+  Bell,
+  FlaskConical
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Patients', href: '/patients', icon: Users },
+  { name: 'Results', href: '/results', icon: FlaskConical },
   { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'Billing', href: '/billing', icon: CreditCard },
   { name: 'Doctors', href: '/doctors', icon: UserSquare2 },
