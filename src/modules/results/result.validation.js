@@ -5,7 +5,7 @@ export const submitResultSchema = z.object({
   body: z.object({
     visitId: z.string().min(1, 'Visit ID is required'),
     testId: z.string().min(1, 'Test ID is required'),
-    sampleId: z.string().optional(),
+    sampleId: z.string().nullable().optional(),
     parameters: z.array(
       z.object({
         parameterName: z.string().min(1, 'Parameter name is required'),
