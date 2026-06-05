@@ -56,8 +56,14 @@ function PatientStep({ patientId, onSelect }) {
   const [phone, setPhone] = useState('');
   const [searched, setSearched] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
-  const [newPatient, setNewPatient] = useState({ firstName: '', lastName: '', gender: 'M', age: '', ageUnit: 'years' });
+  const [newPatient, setNewPatient] = useState({ firstName: '', lastName: '', gender: 'M', age: '', ageUnit: 'years', referredBy: 'none' });
   const [isCreating, setIsCreating] = useState(false);
+
+  const { data: doctorsData } = useQuery({
+    queryKey: ['doctors'],
+    queryFn: () => doctorsApi.getList({ limit: 100 })
+  });
+  const doctors = doctorsData?.doctors || doctorsData || [];
 
   const { data: autofilled, isLoading: autoLoading, refetch } = useQuery({
     queryKey: ['patient-autofill', phone],
@@ -92,6 +98,9 @@ function PatientStep({ patientId, onSelect }) {
       }
       setIsCreating(true);
       const payload = { ...newPatient, phone, age: Number(newPatient.age) };
+      if (payload.referredBy === 'none') {
+        delete payload.referredBy;
+      }
       const created = await patientsApi.create(payload);
       toast.success('Patient registered successfully!');
       onSelect(created);
@@ -199,6 +208,20 @@ function PatientStep({ patientId, onSelect }) {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-neutral-500">Referring Doctor / Agent</Label>
+            <Select value={newPatient.referredBy} onValueChange={v => setNewPatient({...newPatient, referredBy: v})}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select Referrer" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Self / No Referral</SelectItem>
+                {doctors.map(d => (
+                  <SelectItem key={d._id} value={d._id}>
+                    {d.name} {d.qualification ? `(${d.qualification})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex gap-2 pt-2">
             <Button variant="outline" className="flex-1 rounded-xl h-10" onClick={() => setShowNewForm(false)}>Cancel</Button>
@@ -470,6 +493,9 @@ function NewVisitContent() {
 
   function handleSelectPatient(p) {
     setPatient(p);
+    if (p.referredBy) {
+      setReferredBy(typeof p.referredBy === 'object' ? p.referredBy._id : p.referredBy);
+    }
     setStep(1);
   }
 

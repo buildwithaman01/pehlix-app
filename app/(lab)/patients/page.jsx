@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Search, UserPlus, Users, Phone, ChevronRight, Calendar, FlaskConical } from 'lucide-react';
+import { doctorsApi } from '@/lib/api/extended.api';
 
 function useDebounce(value, delay = 350) {
   const [debounced, setDebounced] = useState(value);
@@ -41,8 +42,14 @@ export default function PatientsPage() {
   const [showRegister, setShowRegister] = useState(false);
   const [form, setForm] = useState({
     firstName: '', lastName: '', phone: '', age: '', ageUnit: 'years',
-    gender: '', email: '', consentGiven: false
+    gender: '', email: '', referredBy: 'none', consentGiven: false
   });
+
+  const { data: doctorsData } = useQuery({
+    queryKey: ['doctors'],
+    queryFn: () => doctorsApi.getList({ limit: 100 })
+  });
+  const doctors = doctorsData?.doctors || doctorsData || [];
 
   // Debounced search query
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -72,7 +79,7 @@ export default function PatientsPage() {
       toast.success(`Patient ${patient.patientCode} registered`);
       qc.invalidateQueries(['patients']);
       setShowRegister(false);
-      setForm({ firstName: '', lastName: '', phone: '', age: '', ageUnit: 'years', gender: '', email: '', consentGiven: false });
+      setForm({ firstName: '', lastName: '', phone: '', age: '', ageUnit: 'years', gender: '', email: '', referredBy: 'none', consentGiven: false });
     },
     onError: (err) => toast.error(err?.response?.data?.message || 'Registration failed'),
   });
@@ -87,7 +94,11 @@ export default function PatientsPage() {
       toast.error('Patient consent is required before registration');
       return;
     }
-    registerMutation.mutate({ ...form, age: Number(form.age), consentMethod: 'staff_entry' });
+    const payload = { ...form, age: Number(form.age), consentMethod: 'staff_entry' };
+    if (payload.referredBy === 'none') {
+      delete payload.referredBy;
+    }
+    registerMutation.mutate(payload);
   }
 
   function formatAge(p) {
@@ -248,6 +259,21 @@ export default function PatientsPage() {
             <div className="space-y-1.5">
               <Label htmlFor="email">Email (optional)</Label>
               <Input id="email" type="email" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} className="rounded-xl" placeholder="ravi@email.com" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="referredBy">Referring Doctor / Agent</Label>
+              <Select value={form.referredBy} onValueChange={v => setForm(f => ({...f, referredBy: v}))}>
+                <SelectTrigger id="referredBy" className="rounded-xl"><SelectValue placeholder="Select Referrer" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Self / No Referral</SelectItem>
+                  {doctors.map(d => (
+                    <SelectItem key={d._id} value={d._id}>
+                      {d.name} {d.qualification ? `(${d.qualification})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex items-start space-x-2 pt-3 pb-1 border-t border-neutral-100">
