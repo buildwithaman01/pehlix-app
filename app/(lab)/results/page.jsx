@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -269,26 +268,36 @@ export default function ResultsPage() {
         </div>
       )}
 
-      {/* Result Entry Sheet */}
-      <Sheet open={!!selectedItem} onOpenChange={(o) => !o && setSelectedItem(null)}>
-        <SheetContent className="w-full sm:max-w-xl overflow-y-auto" side="right">
+      {/* Result Entry Dialog */}
+      <Dialog open={!!selectedItem} onOpenChange={(o) => !o && setSelectedItem(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl p-8">
           {selectedItem && (
             <>
-              <SheetHeader className="mb-5">
+              <DialogHeader className="mb-6">
                 <div className="flex items-center justify-between">
-                  <SheetTitle className="text-lg font-bold text-[#1E1E1E]">Enter Results</SheetTitle>
+                  <DialogTitle className="text-2xl font-bold text-[#1E1E1E]">Enter Results</DialogTitle>
                   <PriorityBadge priority={selectedItem.priority} isCritical={selectedItem.isCritical} />
                 </div>
-                <div className="text-sm text-neutral-500 space-y-0.5">
-                  <p className="font-medium text-[#1E1E1E]">{selectedItem.patientName}</p>
-                  <p>{selectedItem.testName} • <span className="font-mono text-xs">{selectedItem.barcodeId}</span></p>
+                <div className="flex gap-6 mt-3 text-sm border-b border-neutral-100 pb-4">
+                  <div>
+                    <p className="text-neutral-400 text-xs uppercase tracking-wider mb-0.5">Patient</p>
+                    <p className="font-semibold text-[#1E1E1E]">{selectedItem.patientName}</p>
+                  </div>
+                  <div>
+                    <p className="text-neutral-400 text-xs uppercase tracking-wider mb-0.5">Test</p>
+                    <p className="font-semibold text-[#1E1E1E]">{selectedItem.testName}</p>
+                  </div>
+                  <div>
+                    <p className="text-neutral-400 text-xs uppercase tracking-wider mb-0.5">Sample ID / Barcode</p>
+                    <p className="font-mono font-medium text-[#1E1E1E] bg-neutral-100 px-2 rounded-md">{selectedItem.barcodeId}</p>
+                  </div>
                 </div>
-              </SheetHeader>
+              </DialogHeader>
 
-              {/* Parameter inputs */}
-              <div className="space-y-3 mb-6">
+              {/* Parameter inputs in grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 {selectedItem.parameters?.length === 0 && (
-                  <p className="text-sm text-neutral-400 text-center py-4">No parameters defined for this test</p>
+                  <p className="text-sm text-neutral-400 col-span-full py-4 text-center bg-neutral-50 rounded-xl">No parameters defined for this test</p>
                 )}
                 {selectedItem.parameters?.map((param) => {
                   const flag = getFlag(resultValues[param.name], param);
@@ -342,29 +351,29 @@ export default function ResultsPage() {
               </div>
 
               {/* Action buttons */}
-              <div className="flex gap-2 pt-4 border-t border-neutral-100">
+              <div className="flex justify-end gap-3 pt-6 border-t border-neutral-200">
                 <Button
                   variant="outline"
                   onClick={() => { setRejectTarget(selectedItem); setShowRejectDialog(true); }}
-                  className="flex-1 rounded-xl border-red-200 text-red-600 hover:bg-red-50 gap-1.5"
+                  className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 gap-1.5 px-6 h-12"
                 >
                   <XCircle className="w-4 h-4" /> Reject Sample
                 </Button>
                 <Button
                   onClick={handleSubmit}
                   disabled={submitMutation.isPending}
-                  className="flex-1 rounded-xl bg-[#0F3D3E] hover:bg-[#0a2e2f] text-white gap-1.5"
+                  className="rounded-xl bg-[#0F3D3E] hover:bg-[#0a2e2f] text-white gap-1.5 px-8 h-12 text-base font-semibold shadow-md"
                 >
                   {submitMutation.isPending
-                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</>
-                    : <><CheckCircle2 className="w-4 h-4" /> Submit Results</>
+                    ? <><Loader2 className="w-5 h-5 animate-spin" /> Submitting…</>
+                    : <><CheckCircle2 className="w-5 h-5" /> Submit Results</>
                   }
                 </Button>
               </div>
             </>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Critical Value Confirmation Modal */}
       <Dialog open={showCriticalModal} onOpenChange={setShowCriticalModal}>

@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
@@ -220,21 +219,21 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* Approval Review Sheet */}
-      <Sheet open={!!selectedItem} onOpenChange={(o) => !o && setSelectedItem(null)}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto" side="right">
+      {/* Approval Review Dialog */}
+      <Dialog open={!!selectedItem} onOpenChange={(o) => !o && setSelectedItem(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl p-8">
           {selectedItem && (
             <>
-              <SheetHeader className="mb-4">
+              <DialogHeader className="mb-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <SheetTitle className="text-lg font-bold text-[#1E1E1E]">
+                    <DialogTitle className="text-2xl font-bold text-[#1E1E1E]">
                       {Array.isArray(selectedItem.testNames)
                         ? selectedItem.testNames.join(' + ')
                         : selectedItem.testName}
-                    </SheetTitle>
-                    <div className="flex items-center gap-2 mt-1 text-sm text-neutral-500">
-                      <User className="w-3.5 h-3.5" />
+                    </DialogTitle>
+                    <div className="flex items-center gap-2 mt-2 text-sm text-neutral-500">
+                      <User className="w-4 h-4" />
                       <span className="font-medium text-[#1E1E1E]">{selectedItem.patientName}</span>
                       <span>•</span>
                       <span>{selectedItem.patientAge} {selectedItem.patientAgeUnit}</span>
@@ -243,20 +242,20 @@ export default function ReportsPage() {
                     </div>
                   </div>
                   {selectedItem.isCritical && (
-                    <Badge className="bg-red-100 text-red-700 border-red-200 shrink-0 gap-1 animate-pulse">
-                      <AlertTriangle className="w-3 h-3" /> CRITICAL
+                    <Badge className="bg-red-100 text-red-700 border-red-200 shrink-0 gap-1 animate-pulse px-3 py-1">
+                      <AlertTriangle className="w-4 h-4" /> CRITICAL
                     </Badge>
                   )}
                 </div>
 
                 {/* Referring doctor */}
                 {selectedItem.referredBy && (
-                  <div className="flex items-center gap-2 text-xs text-neutral-400 mt-1">
-                    <Stethoscope className="w-3 h-3" />
-                    <span>Referred by Dr. {selectedItem.referredBy}</span>
+                  <div className="flex items-center gap-2 text-sm text-neutral-500 mt-2 bg-neutral-50 w-fit px-3 py-1.5 rounded-lg border border-neutral-100">
+                    <Stethoscope className="w-4 h-4 text-neutral-400" />
+                    <span>Referred by Dr. <span className="font-medium text-[#1E1E1E]">{selectedItem.referredBy}</span></span>
                   </div>
                 )}
-              </SheetHeader>
+              </DialogHeader>
 
               {/* Tabs: All params vs Abnormal only */}
               <Tabs defaultValue={abnormalRows.length > 0 ? 'abnormal' : 'all'} className="mb-4">
@@ -323,29 +322,29 @@ export default function ReportsPage() {
               </div>
 
               {/* Action buttons */}
-              <div className="flex gap-2 pt-4 border-t border-neutral-100">
+              <div className="flex justify-end gap-3 pt-6 border-t border-neutral-200 mt-6">
                 <Button
                   variant="outline"
                   onClick={() => setShowRejectDialog(true)}
-                  className="flex-1 rounded-xl border-neutral-200 text-neutral-600 hover:border-red-300 hover:text-red-600 gap-1.5"
+                  className="rounded-xl border-neutral-200 text-neutral-600 hover:border-red-300 hover:text-red-600 gap-1.5 px-6 h-12"
                 >
                   <XCircle className="w-4 h-4" /> Reject with Note
                 </Button>
                 <Button
                   onClick={() => approveMutation.mutate({ id: selectedItem._id, note: clinicalNote })}
                   disabled={approveMutation.isPending}
-                  className="flex-1 rounded-xl bg-[#0F3D3E] hover:bg-[#0a2e2f] text-white gap-1.5"
+                  className="rounded-xl bg-[#0F3D3E] hover:bg-[#0a2e2f] text-white gap-1.5 px-8 h-12 text-base font-semibold shadow-md"
                 >
                   {approveMutation.isPending
-                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing…</>
-                    : <><CheckCircle2 className="w-4 h-4" /> Approve & Sign</>
+                    ? <><Loader2 className="w-5 h-5 animate-spin" /> Signing…</>
+                    : <><CheckCircle2 className="w-5 h-5" /> Approve & Sign</>
                   }
                 </Button>
               </div>
             </>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Reject Dialog */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
