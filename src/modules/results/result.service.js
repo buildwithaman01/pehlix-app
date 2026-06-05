@@ -91,6 +91,26 @@ export const ResultService = {
              }
            }
 
+           // Apply demographic-specific reference ranges
+           const processedParams = parameters.map(p => {
+             const range = this.selectReferenceRange(
+               p,
+               visit.patientId?.age,
+               visit.patientId?.ageUnit,
+               visit.patientId?.gender
+             );
+             return {
+               name: p.name,
+               unit: p.unit,
+               formula: p.formula || null,
+               isDerived: p.isDerived || false,
+               normalLow: range.normalLow,
+               normalHigh: range.normalHigh,
+               criticalLow: range.criticalLow,
+               criticalHigh: range.criticalHigh
+             };
+           });
+
            queue.push({
              _id: `${visit._id.toString()}_${test._id.toString()}`,
              visitId: visit._id,
@@ -101,7 +121,7 @@ export const ResultService = {
              testName: test.name,
              priority: 'routine',
              isCritical: false,
-             parameters: parameters,
+             parameters: processedParams,
              createdAt: visit.createdAt
            });
         }
