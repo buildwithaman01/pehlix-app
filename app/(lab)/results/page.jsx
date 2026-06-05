@@ -270,7 +270,7 @@ export default function ResultsPage() {
 
       {/* Result Entry Dialog */}
       <Dialog open={!!selectedItem} onOpenChange={(o) => !o && setSelectedItem(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl p-8">
+        <DialogContent className="w-[95vw] max-w-none sm:max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 sm:p-8">
           {selectedItem && (
             <>
               <DialogHeader className="mb-6">
