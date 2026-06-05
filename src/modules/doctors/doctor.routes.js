@@ -21,6 +21,7 @@ router.get('/', authenticate, verifyTenant, authorize('owner', 'receptionist'), 
 router.post('/', authenticate, verifyTenant, authorize('owner'), validateRequest(createDoctorSchema), DoctorController.createDoctor);
 router.get('/:id', authenticate, verifyTenant, authorize('owner', 'receptionist', 'pathologist'), DoctorController.getDoctorById);
 router.put('/:id', authenticate, verifyTenant, authorize('owner'), validateRequest(updateDoctorSchema), DoctorController.updateDoctor);
+router.delete('/:id', authenticate, verifyTenant, authorize('owner'), DoctorController.deleteDoctor);
 router.get('/:id/patients', authenticate, verifyTenant, authorize('owner', 'pathologist'), DoctorController.getDoctorPatients);
 router.get('/:id/commissions', authenticate, verifyTenant, authorize('owner'), DoctorController.getDoctorCommissions);
 router.post('/:id/commission/pay', authenticate, verifyTenant, authorize('owner'), validateRequest(payCommissionSchema), DoctorController.payCommission);

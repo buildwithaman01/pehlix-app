@@ -50,6 +50,17 @@ export const DoctorController = {
     }
   },
 
+  async deleteDoctor(req, res, next) {
+    try {
+      const labId = req.user.labId;
+      const doctorId = req.params.id;
+      await DoctorService.deleteDoctor(labId, doctorId);
+      return sendSuccess(res, null, 'Referrer deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async getDoctorPatients(req, res, next) {
     try {
       const labId = req.user.labId;

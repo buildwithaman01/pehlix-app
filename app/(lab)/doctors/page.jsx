@@ -179,14 +179,35 @@ function DoctorDetail({ doctor }) {
     onError: () => toast.error('Failed to mark commission paid'),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: () => doctorsApi.delete(doctor._id),
+    onSuccess: () => {
+      toast.success('Deleted successfully');
+      qc.invalidateQueries(['doctors']);
+      // We rely on the parent component to handle deselecting if needed, but we can't easily here without a prop.
+      // Easiest is to force a reload or pass an onClose
+      window.location.reload();
+    },
+    onError: () => toast.error('Failed to delete')
+  });
+
   return (
-    <div className="flex-1 bg-white rounded-2xl border border-neutral-200 p-5 overflow-y-auto">
+    <div className="flex-1 bg-white rounded-2xl border border-neutral-200 p-5 overflow-y-auto relative">
+      {/* Action Buttons */}
+      <div className="absolute top-5 right-5 flex gap-2">
+        <Button size="sm" variant="outline" className="h-7 px-2 text-xs text-red-500 border-red-200 hover:bg-red-50" onClick={() => {
+          if(confirm('Are you sure you want to delete this referrer?')) deleteMutation.mutate();
+        }}>
+          Delete
+        </Button>
+      </div>
+
       {/* Header */}
-      <div className="flex items-center gap-3 mb-4 pb-4 border-b border-neutral-100">
+      <div className="flex items-center gap-3 mb-4 pb-4 border-b border-neutral-100 mt-2">
         <div className="w-12 h-12 rounded-2xl bg-[#0F3D3E]/8 flex items-center justify-center">
           {doctor.referrerType === 'agent' ? <UserPlus className="w-6 h-6 text-[#0F3D3E]" /> : <Stethoscope className="w-6 h-6 text-[#0F3D3E]" />}
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 pr-16">
           <p className="font-bold text-[#1E1E1E]">{doctor.name}</p>
           {doctor.referrerType === 'doctor' && (
             <p className="text-sm text-neutral-500">{doctor.qualification} • {doctor.specialization || 'General'}</p>

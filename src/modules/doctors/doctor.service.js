@@ -83,6 +83,21 @@ export const DoctorService = {
   },
 
   /**
+   * Soft deletes a doctor/agent.
+   */
+  async deleteDoctor(labId, doctorId) {
+    const doctor = await Doctor.findOneAndUpdate(
+      { _id: doctorId, labId, isDeleted: false },
+      { $set: { isDeleted: true, isActive: false } },
+      { new: true }
+    );
+    if (!doctor) {
+      throw new AppError('Referrer not found', 'NOT_FOUND', 404);
+    }
+    return doctor;
+  },
+
+  /**
    * Gets a list of doctors with pagination.
    */
   async getDoctors(labId, filters = {}, page = 1, limit = 10) {
@@ -174,6 +189,7 @@ export const DoctorService = {
 
     const visits = await Visit.find(query)
       .populate('patientId', 'firstName lastName phone age ageUnit gender')
+      .populate('tests', 'name')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);
@@ -188,6 +204,9 @@ export const DoctorService = {
     const results = visits.map(v => {
       const vObj = v.toObject();
       vObj.reportStatus = reportMap[v._id.toString()] || 'pending';
+      vObj.patientName = v.patientId ? `${v.patientId.firstName} ${v.patientId.lastName || ''}`.trim() : 'Unknown';
+      vObj.tests = v.tests?.map(t => t.name) || [];
+      vObj.visitDate = v.createdAt;
       return vObj;
     });
 
