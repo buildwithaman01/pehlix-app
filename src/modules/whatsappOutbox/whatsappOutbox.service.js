@@ -183,6 +183,8 @@ export const WhatsAppOutboxService = {
 
       rawEntries = await WhatsAppOutbox.find(query)
         .populate('sentBy', 'name')
+        .populate('patientId', 'firstName lastName phone')
+        .populate('labId', 'name phone')
         .sort({ createdAt: -1, _id: -1 })
         .limit(limit + 1);
 
@@ -198,6 +200,8 @@ export const WhatsAppOutboxService = {
       total = await WhatsAppOutbox.countDocuments(query);
       rawEntries = await WhatsAppOutbox.find(query)
         .populate('sentBy', 'name')
+        .populate('patientId', 'firstName lastName phone')
+        .populate('labId', 'name phone')
         .sort({ createdAt: -1, _id: -1 })
         .skip(skip)
         .limit(limitNum);
