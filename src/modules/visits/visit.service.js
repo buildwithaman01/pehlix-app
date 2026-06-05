@@ -192,6 +192,19 @@ export const VisitService = {
     visit.invoiceId = invoice._id;
     await visit.save();
 
+    // Track total referrals and revenue for the referring doctor/agent
+    if (referredBy) {
+      try {
+        const Doctor = mongoose.model('Doctor');
+        await Doctor.updateOne(
+          { _id: referredBy, labId },
+          { $inc: { totalReferrals: 1, totalRevenue: totalAmount } }
+        );
+      } catch (err) {
+        console.error('[VisitService] Failed to update doctor totals:', err);
+      }
+    }
+
     return { visit, invoice };
   },
 

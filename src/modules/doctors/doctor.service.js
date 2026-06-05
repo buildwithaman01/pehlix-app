@@ -227,7 +227,9 @@ export const DoctorService = {
     if (!visit || !visit.referredBy) return null;
 
     const doctor = await Doctor.findOne({ _id: visit.referredBy, labId });
-    if (!doctor || doctor.commissionType === 'none' || doctor.commissionValue === 0) {
+    if (!doctor) return null;
+
+    if (doctor.commissionType === 'none' || doctor.commissionValue === 0) {
       return null;
     }
 
@@ -260,11 +262,6 @@ export const DoctorService = {
       year,
       status: 'pending'
     });
-
-    // Update doctor totals
-    doctor.totalReferrals = (doctor.totalReferrals || 0) + 1;
-    doctor.totalRevenue = (doctor.totalRevenue || 0) + paidAmount;
-    await doctor.save();
 
     return commission;
   },
