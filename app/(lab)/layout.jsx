@@ -175,13 +175,6 @@ export default function LabLayout({ children }) {
           <PehlixLogo variant="wordmark" className="text-xl" light={true} />
         </div>
 
-        <div className="px-4 py-4 border-b border-teal-soft/20">
-          <Link href="/visits/new" className="flex items-center justify-center gap-2 w-full py-2.5 bg-teal-soft text-emerald-deep rounded-lg font-bold hover:bg-white transition-colors shadow-sm">
-            <Plus className="w-5 h-5" />
-            New Visit
-          </Link>
-        </div>
-
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -229,25 +222,14 @@ export default function LabLayout({ children }) {
           <div className="md:hidden fixed inset-0 z-50 flex">
             <div className="fixed inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} />
             <aside className="relative flex flex-col w-64 h-full bg-emerald-deep text-white p-6 space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between pb-4 border-b border-teal-soft/20">
                 <PehlixLogo variant="wordmark" className="text-xl" light={true} />
                 <button onClick={() => setMobileMenuOpen(false)} className="text-white">
                   <X className="w-6 h-6" />
                 </button>
               </div>
 
-              <div className="pb-2 border-b border-teal-soft/20">
-                <Link 
-                  href="/visits/new" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 bg-teal-soft text-emerald-deep rounded-lg font-bold hover:bg-white transition-colors"
-                >
-                  <Plus className="w-5 h-5" />
-                  New Visit
-                </Link>
-              </div>
-
-              <nav className="space-y-1">
+              <nav className="space-y-1 pt-2">
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');

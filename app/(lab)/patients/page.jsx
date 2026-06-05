@@ -106,12 +106,21 @@ export default function PatientsPage() {
         title="Patients"
         subtitle={`${Array.isArray(patients) ? patients.length : 0} patients found`}
         action={
-          <Button
-            onClick={() => setShowRegister(true)}
-            className="rounded-xl bg-[#0F3D3E] hover:bg-[#0a2e2f] text-white gap-1.5"
-          >
-            <UserPlus className="w-4 h-4" /> New Patient
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => router.push('/visits/new')}
+              className="rounded-xl border-[#0F3D3E]/20 text-[#0F3D3E] hover:bg-[#0F3D3E]/5 gap-1.5 font-semibold"
+            >
+              <FlaskConical className="w-4 h-4" /> New Visit
+            </Button>
+            <Button
+              onClick={() => setShowRegister(true)}
+              className="rounded-xl bg-[#0F3D3E] hover:bg-[#0a2e2f] text-white gap-1.5"
+            >
+              <UserPlus className="w-4 h-4" /> New Patient
+            </Button>
+          </div>
         }
       />
 
