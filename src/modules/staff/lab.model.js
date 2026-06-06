@@ -38,6 +38,22 @@ const planConfigSchema = new mongoose.Schema({
   }
 }, { _id: false });
 
+const reportSettingsSchema = new mongoose.Schema({
+  backgroundMode: { 
+    type: String, 
+    enum: ['none', 'header_footer', 'full_page'], 
+    default: 'header_footer' 
+  },
+  fullBackgroundImage: { type: String, trim: true },
+  margins: {
+    top: { type: Number, default: 35 },    // in mm
+    bottom: { type: Number, default: 35 }, // in mm
+    left: { type: Number, default: 15 },   // in mm
+    right: { type: Number, default: 15 }   // in mm
+  },
+  enablePrintWithoutLetterhead: { type: Boolean, default: false }
+}, { _id: false });
+
 const billingSchema = new mongoose.Schema({
   razorpaySubscriptionId: { type: String, trim: true },
   razorpayCustomerId: { type: String, trim: true },
@@ -90,6 +106,10 @@ const labSchema = new mongoose.Schema({
   reportFooter: {
     type: String,
     trim: true
+  },
+  reportSettings: {
+    type: reportSettingsSchema,
+    default: () => ({})
   },
   nablNumber: {
     type: String,

@@ -314,6 +314,43 @@ export const ReportController = {
     } catch (error) {
       next(error);
     }
+  },
+
+  /**
+   * GET /api/reports/:id/stream-print
+   * Streams a PDF directly to the browser for instant printing, bypassing QStash/R2.
+   * Can optionally omit letterhead graphics.
+   */
+  async streamPrintPdf(req, res, next) {
+    try {
+      const { id } = req.params;
+      const labId = req.user.labId;
+
+      const report = await Report.findOne({ _id: id, labId });
+      if (!report) {
+        throw new AppError('Report not found', 'REPORT_NOT_FOUND', 404);
+      }
+
+      // We call the streamPdfSync method on PdfService
+      const PdfService = (await import('../../utils/pdf.js')).default;
+      
+      const response = await PdfService.streamPdfSync(report.visitId, labId, id, true); // true = noLetterhead
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="print_${report.reportCode || id}.pdf"`);
+      
+      // Node 18+ Response body is a web stream, need to pipe properly
+      if (response.body && typeof response.body.pipe === 'function') {
+        response.body.pipe(res);
+      } else {
+        // polyfill/fallback for standard web streams
+        const buffer = await response.arrayBuffer();
+        res.end(Buffer.from(buffer));
+      }
+    } catch (error) {
+      console.error('[ReportController] streamPrintPdf failed:', error);
+      next(error);
+    }
   }
 };
 

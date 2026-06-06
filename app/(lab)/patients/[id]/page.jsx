@@ -15,11 +15,12 @@ import {
 import {
   ArrowLeft, User, Phone, Mail, Calendar, Activity,
   FileText, IndianRupee, Heart, CheckCircle2, Clock,
-  AlertCircle, Droplet
+  AlertCircle, Droplet, Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import apiClient from '@/lib/api/client';
+import { settingsApi } from '@/lib/api/extended.api';
 import { toast } from 'sonner';
 
 export default function PatientDetailPage() {
@@ -27,6 +28,7 @@ export default function PatientDetailPage() {
   const id = params?.id;
   const [mounted, setMounted] = useState(false);
   const [selectedParam, setSelectedParam] = useState('Haemoglobin');
+  const [isPrinting, setIsPrinting] = useState(false);
 
   const handleViewReport = async (reportId) => {
     try {
@@ -42,9 +44,30 @@ export default function PatientDetailPage() {
     }
   };
 
+  const handleStreamPrint = async (reportId) => {
+    try {
+      setIsPrinting(reportId);
+      const res = await apiClient.get(`/reports/${reportId}/stream-print`, { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      toast.error('Failed to stream PDF for printing.');
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const { data: settingsData } = useQuery({
+    queryKey: ['settings'],
+    queryFn: settingsApi.get
+  });
+  const enablePrintWithoutLetterhead = settingsData?.reportSettings?.enablePrintWithoutLetterhead;
 
   const { data: patient, isLoading: patientLoading } = useQuery({
     queryKey: ['patient', id],
@@ -298,16 +321,34 @@ export default function PatientDetailPage() {
 
                             {/* Action Buttons */}
                             <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-zinc-800/80">
-                              {report?.pdfUrl && (
-                                <Button 
-                                  onClick={() => handleViewReport(report.reportId)}
-                                  size="sm" 
-                                  className="bg-[#0F3D3E] hover:bg-[#186466] text-white gap-1.5 text-xs rounded-lg px-3"
-                                >
-                                  <FileText className="h-3.5 w-3.5" /> View Report PDF
-                                </Button>
-                              )}
-                              <Link href={`/billing`}>
+                                {report?.pdfUrl && (
+                                  <>
+                                    <Button 
+                                      onClick={() => handleViewReport(report.reportId)}
+                                      size="sm" 
+                                      className="bg-[#0F3D3E] hover:bg-[#186466] text-white gap-1.5 text-xs rounded-lg px-3"
+                                    >
+                                      <FileText className="h-3.5 w-3.5" /> View Report PDF
+                                    </Button>
+                                    {enablePrintWithoutLetterhead && (
+                                      <Button 
+                                        onClick={() => handleStreamPrint(report.reportId)}
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={isPrinting === report.reportId}
+                                        className="text-[#0F3D3E] border-[#0F3D3E]/20 hover:bg-[#0F3D3E]/5 gap-1.5 text-xs rounded-lg px-3"
+                                      >
+                                        {isPrinting === report.reportId ? (
+                                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        ) : (
+                                          <FileText className="h-3.5 w-3.5" />
+                                        )}
+                                        {isPrinting === report.reportId ? 'Generating...' : 'Print without Letterhead'}
+                                      </Button>
+                                    )}
+                                  </>
+                                )}
+                                <Link href={`/billing`}>
                                 <Button variant="outline" size="sm" className="text-xs rounded-lg px-3">
                                   Billing Details
                                 </Button>

@@ -63,7 +63,13 @@ export default function SettingsPage() {
     razorpayKeySecret: '',
     communicationMode: 'waMe',
     paymentCheckMode: 'pendingOnly',
-    showWhatsAppOnResultEntry: true
+    showWhatsAppOnResultEntry: true,
+    reportSettings: {
+      backgroundMode: 'header_footer',
+      fullBackgroundImage: '',
+      margins: { top: 35, bottom: 35, left: 15, right: 15 },
+      enablePrintWithoutLetterhead: false
+    }
   });
 
   const { data: settingsData, isLoading } = useQuery({
@@ -87,7 +93,13 @@ export default function SettingsPage() {
         razorpayKeySecret: settingsData.razorpayKeySecret || '',
         communicationMode: settingsData.planConfig?.features?.communicationMode || 'waMe',
         paymentCheckMode: settingsData.planConfig?.features?.paymentCheckMode || 'pendingOnly',
-        showWhatsAppOnResultEntry: settingsData.planConfig?.features?.showWhatsAppOnResultEntry !== false
+        showWhatsAppOnResultEntry: settingsData.planConfig?.features?.showWhatsAppOnResultEntry !== false,
+        reportSettings: settingsData.reportSettings || {
+          backgroundMode: 'header_footer',
+          fullBackgroundImage: '',
+          margins: { top: 35, bottom: 35, left: 15, right: 15 },
+          enablePrintWithoutLetterhead: false
+        }
       });
     }
   }, [settingsData]);
@@ -215,40 +227,125 @@ export default function SettingsPage() {
                 <Sparkles className="w-5 h-5 text-[#5FB3A5]" /> Report Styling & Layout
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 pt-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <CardContent className="space-y-6 pt-4">
+              <div className="space-y-1.5">
+                <Label>Background Layout Mode</Label>
+                <select
+                  value={form.reportSettings.backgroundMode}
+                  onChange={e => setForm(prev => ({ ...prev, reportSettings: { ...prev.reportSettings, backgroundMode: e.target.value } }))}
+                  className="w-full h-10 px-3 rounded-xl border border-neutral-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/25 transition-all duration-200"
+                >
+                  <option value="none">None (Blank Paper)</option>
+                  <option value="header_footer">Top Header & Bottom Footer Images</option>
+                  <option value="full_page">Full Page Letterpad (A4 Background)</option>
+                </select>
+                <p className="text-[10px] text-neutral-400">Choose how your branding images are placed on the PDF reports.</p>
+              </div>
+
+              {form.reportSettings.backgroundMode === 'header_footer' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2 border rounded-2xl p-3 bg-neutral-50/50">
+                    <p className="text-xs font-semibold text-neutral-700">Report Header Image</p>
+                    <p className="text-[10px] text-neutral-400">Displayed at the top of PDF test reports. Recommended size: 800x120px.</p>
+                    <div className="relative inline-block mt-1">
+                      <Button type="button" variant="outline" size="sm" className="rounded-lg text-xs bg-white">
+                        Choose Header File
+                      </Button>
+                      <input type="file" accept="image/*" onChange={e => handleFileChange('reportHeader', e)} className="absolute inset-0 opacity-0 cursor-pointer" />
+                    </div>
+                    {form.reportHeader && (
+                      <div className="mt-2 border rounded-xl overflow-hidden bg-white h-12 w-full flex items-center justify-center">
+                        <img src={form.reportHeader} alt="Header" className="object-contain max-h-full max-w-full" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 border rounded-2xl p-3 bg-neutral-50/50">
+                    <p className="text-xs font-semibold text-neutral-700">Report Footer Image</p>
+                    <p className="text-[10px] text-neutral-400">Displayed at the very bottom of PDF test reports. Recommended size: 800x60px.</p>
+                    <div className="relative inline-block mt-1">
+                      <Button type="button" variant="outline" size="sm" className="rounded-lg text-xs bg-white">
+                        Choose Footer File
+                      </Button>
+                      <input type="file" accept="image/*" onChange={e => handleFileChange('reportFooter', e)} className="absolute inset-0 opacity-0 cursor-pointer" />
+                    </div>
+                    {form.reportFooter && (
+                      <div className="mt-2 border rounded-xl overflow-hidden bg-white h-8 w-full flex items-center justify-center">
+                        <img src={form.reportFooter} alt="Footer" className="object-contain max-h-full max-w-full" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {form.reportSettings.backgroundMode === 'full_page' && (
                 <div className="space-y-2 border rounded-2xl p-3 bg-neutral-50/50">
-                  <p className="text-xs font-semibold text-neutral-700">Report Header Image</p>
-                  <p className="text-[10px] text-neutral-400">Displayed at the top of PDF test reports. Recommended size: 800x120px.</p>
+                  <p className="text-xs font-semibold text-neutral-700">Full Letterpad Background Image</p>
+                  <p className="text-[10px] text-neutral-400">This image will be stretched to cover the entire A4 PDF page. Use your complete pre-printed letterpad design. (JPEG/PNG)</p>
                   <div className="relative inline-block mt-1">
                     <Button type="button" variant="outline" size="sm" className="rounded-lg text-xs bg-white">
-                      Choose Header File
+                      Upload Full Background
                     </Button>
-                    <input type="file" accept="image/*" onChange={e => handleFileChange('reportHeader', e)} className="absolute inset-0 opacity-0 cursor-pointer" />
+                    <input type="file" accept="image/*" onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 500000) { toast.error('Image size must be under 500KB'); return; }
+                      const reader = new FileReader();
+                      reader.onload = () => setForm(prev => ({ ...prev, reportSettings: { ...prev.reportSettings, fullBackgroundImage: reader.result } }));
+                      reader.readAsDataURL(file);
+                    }} className="absolute inset-0 opacity-0 cursor-pointer" />
                   </div>
-                  {form.reportHeader && (
-                    <div className="mt-2 border rounded-xl overflow-hidden bg-white h-12 w-full flex items-center justify-center">
-                      <img src={form.reportHeader} alt="Header" className="object-contain max-h-full max-w-full" />
+                  {form.reportSettings.fullBackgroundImage && (
+                    <div className="mt-2 border rounded-xl overflow-hidden bg-white h-32 w-24 flex items-center justify-center">
+                      <img src={form.reportSettings.fullBackgroundImage} alt="Background" className="object-contain max-h-full max-w-full" />
                     </div>
                   )}
                 </div>
+              )}
 
-                <div className="space-y-2 border rounded-2xl p-3 bg-neutral-50/50">
-                  <p className="text-xs font-semibold text-neutral-700">Report Footer Image</p>
-                  <p className="text-[10px] text-neutral-400">Displayed at the very bottom of PDF test reports. Recommended size: 800x60px.</p>
-                  <div className="relative inline-block mt-1">
-                    <Button type="button" variant="outline" size="sm" className="rounded-lg text-xs bg-white">
-                      Choose Footer File
-                    </Button>
-                    <input type="file" accept="image/*" onChange={e => handleFileChange('reportFooter', e)} className="absolute inset-0 opacity-0 cursor-pointer" />
+              <div className="space-y-3 pt-2">
+                <div>
+                  <h4 className="text-xs font-semibold text-neutral-700">Content Margins (in millimeters)</h4>
+                  <p className="text-[10px] text-neutral-400">Define the blank space around the text so it does not overlap with your headers, footers, or physical letterpad.</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Top</Label>
+                    <Input type="number" min="0" value={form.reportSettings.margins.top} onChange={e => setForm(prev => ({ ...prev, reportSettings: { ...prev.reportSettings, margins: { ...prev.reportSettings.margins, top: parseInt(e.target.value) || 0 } } }))} className="h-8 text-sm rounded-lg" />
                   </div>
-                  {form.reportFooter && (
-                    <div className="mt-2 border rounded-xl overflow-hidden bg-white h-8 w-full flex items-center justify-center">
-                      <img src={form.reportFooter} alt="Footer" className="object-contain max-h-full max-w-full" />
-                    </div>
-                  )}
+                  <div className="space-y-1">
+                    <Label className="text-xs">Bottom</Label>
+                    <Input type="number" min="0" value={form.reportSettings.margins.bottom} onChange={e => setForm(prev => ({ ...prev, reportSettings: { ...prev.reportSettings, margins: { ...prev.reportSettings.margins, bottom: parseInt(e.target.value) || 0 } } }))} className="h-8 text-sm rounded-lg" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Left</Label>
+                    <Input type="number" min="0" value={form.reportSettings.margins.left} onChange={e => setForm(prev => ({ ...prev, reportSettings: { ...prev.reportSettings, margins: { ...prev.reportSettings.margins, left: parseInt(e.target.value) || 0 } } }))} className="h-8 text-sm rounded-lg" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Right</Label>
+                    <Input type="number" min="0" value={form.reportSettings.margins.right} onChange={e => setForm(prev => ({ ...prev, reportSettings: { ...prev.reportSettings, margins: { ...prev.reportSettings.margins, right: parseInt(e.target.value) || 0 } } }))} className="h-8 text-sm rounded-lg" />
+                  </div>
                 </div>
               </div>
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-2xl bg-emerald-50/50 border border-emerald-100 gap-3">
+                <div className="space-y-0.5 max-w-[85%]">
+                  <Label htmlFor="toggle-print-no-letterhead" className="font-bold text-xs text-emerald-900 cursor-pointer flex items-center gap-1">
+                    Allow "Print without Letterhead" Feature
+                  </Label>
+                  <p className="text-[10px] text-emerald-700/80 leading-snug">
+                    If enabled, a special button will appear on patient reports allowing your staff to print the report instantly *without* the digital background graphics, perfect for feeding pre-printed physical letterpads into your printer.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  id="toggle-print-no-letterhead"
+                  checked={form.reportSettings.enablePrintWithoutLetterhead}
+                  onChange={e => setForm(prev => ({ ...prev, reportSettings: { ...prev.reportSettings, enablePrintWithoutLetterhead: e.target.checked } }))}
+                  className="w-4.5 h-4.5 accent-emerald-600 cursor-pointer shrink-0"
+                />
+              </div>
+
             </CardContent>
           </Card>
 

@@ -69,4 +69,10 @@ router.post(
   ReportController.amendReport
 );
 
+router.get(
+  '/:id/stream-print',
+  authorize('owner', 'pathologist', 'technician', 'receptionist'),
+  ReportController.streamPrintPdf
+);
+
 export default router;

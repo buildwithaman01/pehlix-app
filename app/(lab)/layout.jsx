@@ -22,12 +22,14 @@ import {
   Shield,
   Bell,
   FlaskConical,
+  TestTubes,
   Plus
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Patients', href: '/patients', icon: Users },
+  { name: 'Tests', href: '/tests', icon: TestTubes },
   { name: 'Results', href: '/results', icon: FlaskConical },
   { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'Billing', href: '/billing', icon: CreditCard },

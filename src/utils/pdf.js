@@ -194,6 +194,40 @@ export const PdfService = {
     await report.save();
 
     return { messageId: res.messageId, node: nextNode };
+  },
+
+  /**
+   * Synchronously streams a PDF directly from the microservice.
+   * Useful for "Print Without Letterhead" on the fly generation.
+   */
+  async streamPdfSync(visitId, labId, reportId, noLetterhead = false) {
+    const node = this.selectNode();
+    if (!node) {
+      throw new AppError('No available PDF node configured', 'PDF_GENERATION_FAILED', 500);
+    }
+    
+    // Call the synchronous /stream endpoint on the pdf service
+    const streamUrl = node.replace('/generate', '/stream');
+    
+    const response = await fetch(streamUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.PDF_SERVICE_SECRET || process.env.PDF_SERVICE_SECRET}`
+      },
+      body: JSON.stringify({
+        visitId: visitId.toString(),
+        labId: labId.toString(),
+        reportId: reportId.toString(),
+        noLetterhead
+      })
+    });
+
+    if (!response.ok) {
+      throw new AppError(`PDF Stream failed with status: ${response.status}`, 'PDF_STREAM_ERROR', response.status);
+    }
+
+    return response;
   }
 };
 
