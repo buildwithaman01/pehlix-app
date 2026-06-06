@@ -287,18 +287,10 @@ export const InvoiceController = {
         throw new AppError('Invoice not found', 'INVOICE_NOT_FOUND', 404);
       }
 
+      // Explicit overrides provided by the user
       if (paymentStatus) invoice.paymentStatus = paymentStatus;
       if (amountPaid !== undefined) invoice.amountPaid = amountPaid;
       if (totalAmount !== undefined) invoice.totalAmount = totalAmount;
-
-      // Auto-adjust status if amountPaid equals totalAmount
-      if (invoice.amountPaid >= invoice.totalAmount) {
-        invoice.paymentStatus = 'paid';
-      } else if (invoice.amountPaid > 0 && invoice.amountPaid < invoice.totalAmount) {
-        invoice.paymentStatus = 'partial';
-      } else if (invoice.amountPaid === 0 && invoice.paymentStatus !== 'waived') {
-        invoice.paymentStatus = 'pending';
-      }
 
       await invoice.save();
 
