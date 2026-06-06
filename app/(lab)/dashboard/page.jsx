@@ -17,6 +17,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import apiClient from '@/lib/api/client';
 
 function formatCurrency(n) {
   if (!n && n !== 0) return '—';
@@ -50,10 +51,9 @@ export default function DashboardPage() {
 
     const fetchStats = async () => {
       try {
-        const res = await fetch('/api/whatsapp-outbox/stats');
-        const data = await res.json();
-        if (data.success && data.data) {
-          setReadyOutboxCount(data.data.ready || 0);
+        const res = await apiClient.get('/whatsapp-outbox/stats');
+        if (res.data.success && res.data.data) {
+          setReadyOutboxCount(res.data.data.ready || 0);
         }
       } catch (err) {
         console.error('Failed to fetch outbox stats on dashboard:', err);
@@ -96,13 +96,61 @@ export default function DashboardPage() {
     },
   ];
 
-  // Dynamic status-colored mock activities to show live action
-  const mockActivities = [
-    { id: 1, text: 'Report generated for Hematology panel', time: '2m ago', color: 'emerald' },
-    { id: 2, text: 'New visit registered for PAT-8021', time: '15m ago', color: 'blue' },
-    { id: 3, text: 'Critical Hemoglobin result entered', time: '1h ago', color: 'red' },
-    { id: 4, text: 'Inventory Reagent stock low alert triggered', time: '3h ago', color: 'amber' },
-    { id: 5, text: 'Report delivered via WhatsApp to patient', time: '4h ago', color: 'teal' },
+  const { data: liveFeedResponse, isLoading: isLoadingFeed } = useQuery({
+    queryKey: ['liveFeed'],
+    queryFn: () => apiClient.get('/audit', { params: { limit: 10 } }).then(r => r.data),
+    refetchInterval: 30000,
+  });
+
+  const liveFeedData = liveFeedResponse?.data?.entries || [];
+
+  const getActionColor = (action) => {
+    switch (action) {
+      case 'created': return 'blue';
+      case 'updated': return 'amber';
+      case 'approved': return 'emerald';
+      case 'rejected': return 'red';
+      case 'flagged_critical': return 'orange';
+      case 'critical_acknowledged': return 'purple';
+      case 'amendment': return 'pink';
+      default: return 'teal';
+    }
+  };
+
+  const getActionText = (entry) => {
+    const pName = entry.patientId ? `${entry.patientId.firstName} ${entry.patientId.lastName || ''}` : 'Patient';
+    const tName = entry.testId ? entry.testId.name : 'Test';
+    const by = entry.performedBy ? `${entry.performedBy.firstName} ${entry.performedBy.lastName}` : 'System';
+    switch (entry.action) {
+      case 'created': return `Result entered for ${tName} (${pName}) by ${by}`;
+      case 'updated': return `Result updated for ${tName} (${pName}) by ${by}`;
+      case 'approved': return `Result approved for ${tName} (${pName}) by ${by}`;
+      case 'rejected': return `Result rejected for ${tName} (${pName}) by ${by}`;
+      case 'flagged_critical': return `Critical flag raised on ${tName} for ${pName}`;
+      case 'critical_acknowledged': return `Critical alert acknowledged for ${pName} by ${by}`;
+      case 'amendment': return `Report amended for ${tName} (${pName}) by ${by}`;
+      default: return `${entry.action} on ${tName} by ${by}`;
+    }
+  };
+
+  function timeAgo(date) {
+    if (!date) return '';
+    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+    if (seconds < 60) return `${Math.max(seconds, 0)}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  }
+
+  const liveActivities = liveFeedData.length > 0 ? liveFeedData.map(entry => ({
+    id: entry._id,
+    text: getActionText(entry),
+    time: timeAgo(entry.performedAt),
+    color: getActionColor(entry.action)
+  })) : [
+    { id: 'empty', text: 'Waiting for new lab activity...', time: 'Just now', color: 'teal' }
   ];
 
   const hasLowStock = (data?.lowStockAlerts?.count ?? data?.lowStockCount) > 0;
@@ -291,22 +339,40 @@ export default function DashboardPage() {
               )
             ) : (
               <div className="space-y-3">
-                {mockActivities.map((act) => (
-                  <div key={act.id} className="flex items-start gap-2.5 text-xs">
-                    <span className={cn(
-                      'w-2 h-2 rounded-full mt-1.5 shrink-0 animate-pulse',
-                      act.color === 'emerald' && 'bg-emerald-500',
-                      act.color === 'blue' && 'bg-blue-500',
-                      act.color === 'red' && 'bg-red-500',
-                      act.color === 'amber' && 'bg-amber-500',
-                      act.color === 'teal' && 'bg-teal-500'
-                    )} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[#1E1E1E] font-medium leading-normal">{act.text}</p>
-                      <span className="text-[9px] text-neutral-400 font-semibold block mt-0.5">{act.time}</span>
-                    </div>
+                {isLoadingFeed ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <div key={i} className="flex gap-2">
+                        <div className="w-2 h-2 rounded-full bg-neutral-200 animate-pulse mt-1.5" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-3 bg-neutral-200 rounded w-3/4 animate-pulse" />
+                          <div className="h-2 bg-neutral-100 rounded w-1/4 animate-pulse" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  liveActivities.map((act) => (
+                    <div key={act.id} className="flex items-start gap-2.5 text-xs">
+                      <span className={cn(
+                        'w-2 h-2 rounded-full mt-1.5 shrink-0',
+                        act.color === 'emerald' && 'bg-emerald-500',
+                        act.color === 'blue' && 'bg-blue-500',
+                        act.color === 'red' && 'bg-red-500',
+                        act.color === 'amber' && 'bg-amber-500',
+                        act.color === 'teal' && 'bg-teal-500',
+                        act.color === 'orange' && 'bg-orange-500',
+                        act.color === 'purple' && 'bg-purple-500',
+                        act.color === 'pink' && 'bg-pink-500',
+                        act.color === 'gray' && 'bg-gray-400'
+                      )} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[#1E1E1E] font-medium leading-normal">{act.text}</p>
+                        <span className="text-[9px] text-neutral-400 font-semibold block mt-0.5">{act.time}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </div>

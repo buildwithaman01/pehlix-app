@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Download, Filter, Search, ChevronLeft, ChevronRight, Shield, ClipboardList, User, Calendar, ArrowUpDown } from 'lucide-react';
+import apiClient from '@/lib/api/client';
 
 const ACTION_CONFIG = {
   created: { label: 'Result Created', color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/30' },
@@ -63,18 +64,17 @@ export default function AuditLogPage() {
   const fetchEntries = useCallback(async (cursor = null) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: '25' });
-      if (cursor) params.set('cursor', cursor);
-      if (actionFilter) params.set('action', actionFilter);
-      if (fromDate) params.set('from', fromDate);
-      if (toDate) params.set('to', toDate);
+      const params = { limit: 25 };
+      if (fromDate) params.from = fromDate;
+      if (toDate) params.to = toDate;
+      if (actionFilter) params.action = actionFilter;
+      if (cursor) params.cursor = cursor;
 
-      const res = await fetch(`/api/audit/results?${params}`, { credentials: 'include' });
-      const json = await res.json();
-      if (json.success) {
-        setEntries(json.data.entries || []);
-        setHasNextPage(json.data.hasNextPage || false);
-        return json.data.nextCursor;
+      const { data } = await apiClient.get('/audit', { params });
+      if (data.success) {
+        setEntries(data.data.entries || []);
+        setHasNextPage(data.data.hasNextPage || false);
+        return data.data.nextCursor;
       }
     } catch (err) {
       console.error('[AuditLog] Fetch failed:', err);

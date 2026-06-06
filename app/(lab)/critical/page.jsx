@@ -63,6 +63,8 @@ function StatCard({ label, count, color, icon: Icon }) {
   );
 }
 
+import apiClient from '@/lib/api/client';
+
 export default function CriticalMonitorPage() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -71,10 +73,9 @@ export default function CriticalMonitorPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('/api/results/critical-monitor', { credentials: 'include' });
-      const json = await res.json();
-      if (json.success) {
-        setData(json.data || []);
+      const res = await apiClient.get('/results/critical-monitor');
+      if (res.data.success) {
+        setData(res.data.data || []);
         setLastRefresh(new Date());
       }
     } catch (err) {
@@ -93,12 +94,7 @@ export default function CriticalMonitorPage() {
   async function sendReminder(resultId) {
     setSending(prev => ({ ...prev, [resultId]: true }));
     try {
-      await fetch(`/api/results/${resultId}/flag-critical`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirmed: true }),
-        credentials: 'include'
-      });
+      await apiClient.post(`/results/${resultId}/flag-critical`, { confirmed: true });
       await fetchData();
     } catch (err) {
       console.error('[CriticalMonitor] Send reminder failed:', err);
