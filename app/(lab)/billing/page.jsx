@@ -409,6 +409,10 @@ export default function BillingPage() {
                                 className="h-7 rounded-lg border-neutral-200 text-neutral-600 text-xs px-2.5 gap-1 hover:border-[#0F3D3E]/30" title="Print Invoice">
                                 <Printer className="w-3 h-3" />
                             </Button>
+                            <Button size="sm" variant="outline" onClick={() => setEditTarget(inv)}
+                              className="h-7 rounded-lg border-neutral-200 text-neutral-500 text-xs px-2.5 gap-1 hover:text-[#5FB3A5] hover:border-[#5FB3A5]" title="Edit Invoice">
+                              <Edit className="w-3 h-3" />
+                            </Button>
                             {(inv.paymentStatus === 'pending' || inv.paymentStatus === 'partial') && (<>
                               <Button size="sm" onClick={() => setRecordTarget(inv)}
                                 className="h-7 rounded-lg bg-[#0F3D3E] text-white text-xs px-2.5 gap-1 hover:bg-[#0a2e2f]">
@@ -422,10 +426,6 @@ export default function BillingPage() {
                               <Button size="sm" variant="outline" onClick={() => setWaiveTarget(inv)}
                                 className="h-7 rounded-lg border-neutral-200 text-neutral-500 text-xs px-2.5 gap-1 hover:text-red-600 hover:border-red-200" title="Waive / Void Invoice">
                                 <Ban className="w-3 h-3" />
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => setEditTarget(inv)}
-                                className="h-7 rounded-lg border-neutral-200 text-neutral-500 text-xs px-2.5 gap-1 hover:text-[#5FB3A5] hover:border-[#5FB3A5]" title="Edit Invoice">
-                                <Edit className="w-3 h-3" />
                               </Button>
                             </>)}
                           </div>
