@@ -13,5 +13,6 @@ paymentRouter.use(verifyTenant);
 
 // Expose endpoints
 paymentRouter.get('/', generalRateLimit, authorize('owner', 'receptionist'), PaymentController.getPayments);
+paymentRouter.delete('/:id', generalRateLimit, authorize('owner', 'receptionist'), PaymentController.deletePayment);
 
 export default paymentRouter;

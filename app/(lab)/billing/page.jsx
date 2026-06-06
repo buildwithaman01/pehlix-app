@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { billingApi } from '@/lib/api/extended.api';
 import PageHeader from '@/components/shared/PageHeader';
@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Search, Receipt, Link, Ban, IndianRupee, CreditCard, Copy, Check, ArrowUpDown, Printer } from 'lucide-react';
+import { Search, Receipt, Link, Ban, IndianRupee, CreditCard, Copy, Check, ArrowUpDown, Printer, Edit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const STATUS_STYLES = {
@@ -36,9 +36,20 @@ function StatusBadge({ status }) {
 
 function RecordPaymentDialog({ invoice, open, onClose }) {
   const qc = useQueryClient();
-  const [amount, setAmount] = useState(invoice ? String(invoice.balance || invoice.totalAmount) : '');
+  const balance = invoice ? (invoice.totalAmount || 0) - (invoice.amountPaid || 0) : 0;
+  const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('cash');
   const [notes, setNotes] = useState('');
+
+  // Reset state when invoice changes
+
+  useEffect(() => {
+    if (invoice) {
+      setAmount(String(balance));
+      setMethod('cash');
+      setNotes('');
+    }
+  }, [invoice, balance]);
 
   const mutation = useMutation({
     mutationFn: (data) => billingApi.recordPayment(invoice._id, data),
@@ -61,7 +72,7 @@ function RecordPaymentDialog({ invoice, open, onClose }) {
         <div className="space-y-3 my-2">
           <div className="bg-neutral-50 rounded-xl px-4 py-3 text-sm">
             <p className="text-neutral-500">Invoice <span className="font-mono font-medium text-[#1E1E1E]">{invoice.invoiceCode}</span></p>
-            <p className="text-neutral-500 mt-0.5">Balance due: <span className="font-bold text-red-600">₹{(invoice.balance || 0).toLocaleString('en-IN')}</span></p>
+            <p className="text-neutral-500 mt-0.5">Balance due: <span className="font-bold text-red-600">₹{balance.toLocaleString('en-IN')}</span></p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="pay-amount">Amount <span className="text-red-500">*</span></Label>
@@ -159,15 +170,82 @@ function WaiveDialog({ invoice, open, onClose }) {
   );
 }
 
+function EditInvoiceDialog({ invoice, open, onClose }) {
+  const qc = useQueryClient();
+  const [status, setStatus] = useState('');
+  const [amountPaid, setAmountPaid] = useState('');
+
+  useEffect(() => {
+    if (invoice) {
+      setStatus(invoice.paymentStatus || 'pending');
+      setAmountPaid(invoice.amountPaid || 0);
+    }
+  }, [invoice]);
+
+  const mutation = useMutation({
+    mutationFn: () => billingApi.updateInvoice(invoice._id, { paymentStatus: status, amountPaid: Number(amountPaid) }),
+    onSuccess: () => { toast.success('Invoice updated'); qc.invalidateQueries(['invoices']); onClose(); },
+    onError: (err) => toast.error(err?.response?.data?.message || 'Failed'),
+  });
+
+  if (!invoice) return null;
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm rounded-3xl">
+        <DialogHeader><DialogTitle className="text-[#1E1E1E]">Edit Invoice</DialogTitle></DialogHeader>
+        <div className="my-3 space-y-3">
+          <div className="space-y-1.5">
+            <Label>Payment Status</Label>
+            <select className="w-full h-11 px-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5FB3A5]" value={status} onChange={e => setStatus(e.target.value)}>
+              <option value="pending">Pending</option>
+              <option value="partial">Partial</option>
+              <option value="paid">Paid</option>
+              <option value="waived">Waived</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Amount Paid (₹)</Label>
+            <Input type="number" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} className="h-11 rounded-xl" />
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose} className="rounded-xl">Cancel</Button>
+          <Button disabled={mutation.isPending} onClick={() => mutation.mutate()} className="rounded-xl bg-[#0F3D3E] hover:bg-[#1A5C5D] text-white">Save Changes</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function BillingPage() {
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [recordTarget, setRecordTarget] = useState(null);
   const [payLinkUrl, setPayLinkUrl] = useState(null);
   const [waiveTarget, setWaiveTarget] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
   const [generatingLinkFor, setGeneratingLinkFor] = useState(null);
   const [selectedInvoices, setSelectedInvoices] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+
+  const deletePaymentMutation = useMutation({
+    mutationFn: (id) => billingApi.deletePayment(id),
+    onSuccess: () => {
+      import('sonner').then(m => m.toast.success('Payment deleted successfully'));
+      qc.invalidateQueries(['payments']);
+      qc.invalidateQueries(['invoices']);
+    },
+    onError: (err) => {
+      import('sonner').then(m => m.toast.error(err?.response?.data?.message || 'Failed to delete payment'));
+    },
+  });
+
+  const handleDeletePayment = (id) => {
+    if (confirm('Are you sure you want to delete this payment? This will update the invoice balance.')) {
+      deletePaymentMutation.mutate(id);
+    }
+  };
 
   const { data: invoiceData, isLoading: invLoading } = useQuery({
     queryKey: ['invoices', search, statusFilter],
@@ -345,6 +423,10 @@ export default function BillingPage() {
                                 className="h-7 rounded-lg border-neutral-200 text-neutral-500 text-xs px-2.5 gap-1 hover:text-red-600 hover:border-red-200" title="Waive / Void Invoice">
                                 <Ban className="w-3 h-3" />
                               </Button>
+                              <Button size="sm" variant="outline" onClick={() => setEditTarget(inv)}
+                                className="h-7 rounded-lg border-neutral-200 text-neutral-500 text-xs px-2.5 gap-1 hover:text-[#5FB3A5] hover:border-[#5FB3A5]" title="Edit Invoice">
+                                <Edit className="w-3 h-3" />
+                              </Button>
                             </>)}
                           </div>
                         </td>
@@ -372,6 +454,7 @@ export default function BillingPage() {
                     <tr>
                       {['Date','Patient','Amount','Method','Reference','Collected By'].map(h =>
                         <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wide whitespace-nowrap">{h}</th>)}
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wide whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-50">
@@ -385,6 +468,14 @@ export default function BillingPage() {
                         <td className="px-4 py-3 capitalize text-neutral-600">{p.method || '—'}</td>
                         <td className="px-4 py-3 font-mono text-xs text-neutral-400">{p.transactionId || '—'}</td>
                         <td className="px-4 py-3 text-neutral-500">{p.collectedBy || '—'}</td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => handleDeletePayment(p._id)}
+                            className="text-red-500 hover:text-red-700 text-sm font-medium transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -398,6 +489,7 @@ export default function BillingPage() {
       <RecordPaymentDialog invoice={recordTarget} open={!!recordTarget} onClose={() => setRecordTarget(null)} />
       <PaymentLinkDialog url={payLinkUrl} open={!!payLinkUrl} onClose={() => setPayLinkUrl(null)} />
       <WaiveDialog invoice={waiveTarget} open={!!waiveTarget} onClose={() => setWaiveTarget(null)} />
+      <EditInvoiceDialog invoice={editTarget} open={!!editTarget} onClose={() => setEditTarget(null)} />
     </div>
   );
 }

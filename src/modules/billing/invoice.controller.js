@@ -271,6 +271,41 @@ export const InvoiceController = {
     } catch (error) {
       next(error);
     }
+  },
+
+  /**
+   * Update invoice details (paymentStatus, amountPaid, etc.)
+   */
+  async updateInvoice(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { paymentStatus, amountPaid, totalAmount } = req.body;
+      const labId = req.user.labId;
+
+      const invoice = await Invoice.findOne({ _id: id, labId, isDeleted: { $ne: true } });
+      if (!invoice) {
+        throw new AppError('Invoice not found', 'INVOICE_NOT_FOUND', 404);
+      }
+
+      if (paymentStatus) invoice.paymentStatus = paymentStatus;
+      if (amountPaid !== undefined) invoice.amountPaid = amountPaid;
+      if (totalAmount !== undefined) invoice.totalAmount = totalAmount;
+
+      // Auto-adjust status if amountPaid equals totalAmount
+      if (invoice.amountPaid >= invoice.totalAmount) {
+        invoice.paymentStatus = 'paid';
+      } else if (invoice.amountPaid > 0 && invoice.amountPaid < invoice.totalAmount) {
+        invoice.paymentStatus = 'partial';
+      } else if (invoice.amountPaid === 0 && invoice.paymentStatus !== 'waived') {
+        invoice.paymentStatus = 'pending';
+      }
+
+      await invoice.save();
+
+      return sendSuccess(res, invoice, 'Invoice updated successfully');
+    } catch (error) {
+      next(error);
+    }
   }
 };
 

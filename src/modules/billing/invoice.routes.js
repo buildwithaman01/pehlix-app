@@ -17,5 +17,6 @@ invoiceRouter.get('/:id', generalRateLimit, authorize('owner', 'receptionist', '
 invoiceRouter.post('/:id/payment-link', generalRateLimit, authorize('owner', 'receptionist', 'technician'), InvoiceController.generatePaymentLink);
 invoiceRouter.post('/:id/record-payment', generalRateLimit, authorize('owner', 'receptionist'), InvoiceController.recordManualPayment);
 invoiceRouter.post('/:id/waive', generalRateLimit, authorize('owner'), InvoiceController.waiveInvoice);
+invoiceRouter.put('/:id', generalRateLimit, authorize('owner', 'receptionist'), InvoiceController.updateInvoice);
 
 export default invoiceRouter;
