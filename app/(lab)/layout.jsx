@@ -168,9 +168,9 @@ export default function LabLayout({ children }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-neutral-light font-satoshi">
+    <div className="flex h-screen overflow-hidden bg-neutral-light font-satoshi print:h-auto print:overflow-visible print:bg-white">
       {/* Sidebar for Desktop */}
-      <aside className="hidden md:flex md:flex-col md:w-64 bg-emerald-deep text-white shrink-0">
+      <aside className="hidden md:flex md:flex-col md:w-64 bg-emerald-deep text-white shrink-0 print:hidden">
         <div className="flex items-center h-16 px-6 border-b border-teal-soft/20">
           <PehlixLogo variant="wordmark" className="text-xl" light={true} />
         </div>
@@ -205,9 +205,9 @@ export default function LabLayout({ children }) {
       </aside>
 
       {/* Mobile Shell Wrapper */}
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden print:overflow-visible print:h-auto">
         {/* Mobile Header */}
-        <header className="flex items-center justify-between h-16 px-6 bg-white border-b md:hidden shrink-0">
+        <header className="flex items-center justify-between h-16 px-6 bg-white border-b md:hidden shrink-0 print:hidden">
           <PehlixLogo variant="wordmark" className="text-xl" light={false} />
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -262,7 +262,7 @@ export default function LabLayout({ children }) {
         )}
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto bg-neutral-light p-6 md:p-8">
+        <main className="flex-1 overflow-y-auto bg-neutral-light p-6 md:p-8 print:overflow-visible print:bg-white print:p-0">
           {children}
         </main>
       </div>

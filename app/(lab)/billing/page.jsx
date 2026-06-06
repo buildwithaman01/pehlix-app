@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Search, Receipt, Link, Ban, IndianRupee, CreditCard, Copy, Check } from 'lucide-react';
+import { Search, Receipt, Link, Ban, IndianRupee, CreditCard, Copy, Check, ArrowUpDown, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const STATUS_STYLES = {
@@ -166,6 +166,8 @@ export default function BillingPage() {
   const [payLinkUrl, setPayLinkUrl] = useState(null);
   const [waiveTarget, setWaiveTarget] = useState(null);
   const [generatingLinkFor, setGeneratingLinkFor] = useState(null);
+  const [selectedInvoices, setSelectedInvoices] = useState([]);
+  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
 
   const { data: invoiceData, isLoading: invLoading } = useQuery({
     queryKey: ['invoices', search, statusFilter],
@@ -182,8 +184,47 @@ export default function BillingPage() {
     queryFn: () => billingApi.getPayments({ page: 1, limit: 50 }),
   });
 
-  const invoices = invoiceData?.invoices || invoiceData || [];
+  const rawInvoices = invoiceData?.invoices || invoiceData || [];
+  const invoices = [...rawInvoices].sort((a, b) => {
+    let aVal = a[sortConfig.key];
+    let bVal = b[sortConfig.key];
+    
+    if (sortConfig.key === 'date') {
+      aVal = new Date(a.createdAt).getTime();
+      bVal = new Date(b.createdAt).getTime();
+    } else if (sortConfig.key === 'balance') {
+      aVal = (a.totalAmount || 0) - (a.amountPaid || 0);
+      bVal = (b.totalAmount || 0) - (b.amountPaid || 0);
+    } else if (sortConfig.key === 'total') {
+      aVal = a.totalAmount || 0;
+      bVal = b.totalAmount || 0;
+    }
+
+    if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
   const payments = paymentData?.payments || paymentData || [];
+
+  const toggleSelectAll = () => {
+    if (selectedInvoices.length === invoices.length) setSelectedInvoices([]);
+    else setSelectedInvoices(invoices.map(i => i._id));
+  };
+  
+  const toggleSelect = (id) => {
+    setSelectedInvoices(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+  
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+  
+  const handlePrint = (invoice) => {
+    window.open('/reports/invoice/' + invoice._id, '_blank');
+  };
 
   async function handleGenerateLink(invoice) {
     setGeneratingLinkFor(invoice._id);
@@ -215,6 +256,14 @@ export default function BillingPage() {
               <Input value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Search patient or invoice code…" className="pl-9 h-10 rounded-xl" />
             </div>
+            {selectedInvoices.length > 0 && (
+              <div className="flex items-center gap-2 mr-2">
+                <span className="text-sm font-medium text-neutral-600">{selectedInvoices.length} selected</span>
+                <Button size="sm" variant="outline" className="h-10 rounded-xl text-[#0F3D3E] border-[#0F3D3E]/30 bg-neutral-50/50">
+                  <Printer className="w-4 h-4 mr-2" /> Print Invoices
+                </Button>
+              </div>
+            )}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-36 h-10 rounded-xl"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -234,45 +283,74 @@ export default function BillingPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
-                      {['Invoice','Patient','Date','Total','Paid','Balance','Status','Actions'].map(h =>
-                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wide whitespace-nowrap">{h}</th>)}
+                      <th className="px-4 py-3 w-10">
+                        <input type="checkbox" className="w-4 h-4 rounded text-[#0F3D3E]" checked={invoices.length > 0 && selectedInvoices.length === invoices.length} onChange={toggleSelectAll} />
+                      </th>
+                      {['Invoice','Patient','Date','Total','Paid','Balance','Status','Actions'].map(h => (
+                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wide whitespace-nowrap cursor-pointer hover:text-[#0F3D3E] select-none"
+                          onClick={() => {
+                            if (h === 'Date') handleSort('date');
+                            else if (h === 'Balance') handleSort('balance');
+                            else if (h === 'Total') handleSort('total');
+                          }}>
+                          <div className="flex items-center gap-1.5">
+                            {h}
+                            {['Date', 'Balance', 'Total'].includes(h) && <ArrowUpDown className="w-3 h-3 opacity-50" />}
+                          </div>
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-50">
-                    {invoices.map((inv) => (
+                    {invoices.map((inv) => {
+                      const balance = (inv.totalAmount || 0) - (inv.amountPaid || 0);
+                      return (
                       <tr key={inv._id} className="hover:bg-neutral-50/50">
-                        <td className="px-4 py-3 font-mono text-xs text-[#0F3D3E] font-medium">{inv.invoiceCode}</td>
+                        <td className="px-4 py-3">
+                          <input type="checkbox" className="w-4 h-4 rounded text-[#0F3D3E]" checked={selectedInvoices.includes(inv._id)} onChange={() => toggleSelect(inv._id)} />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-xs text-[#0F3D3E] font-medium">{inv.invoiceCode}</span>
+                            <button onClick={() => { navigator.clipboard.writeText(inv.invoiceCode); toast.success('Copied code'); }} className="text-neutral-400 hover:text-[#0F3D3E] transition-colors"><Copy className="w-3 h-3" /></button>
+                          </div>
+                        </td>
                         <td className="px-4 py-3 font-medium text-[#1E1E1E]">{inv.patientName || '—'}</td>
                         <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">
-                          {new Date(inv.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short' })}
+                          {new Date(inv.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}
                         </td>
                         <td className="px-4 py-3 font-medium">₹{(inv.totalAmount||0).toLocaleString('en-IN')}</td>
-                        <td className="px-4 py-3 text-emerald-600 font-medium">₹{(inv.paidAmount||0).toLocaleString('en-IN')}</td>
-                        <td className="px-4 py-3 font-bold text-red-600">
-                          {inv.balance > 0 ? `₹${inv.balance.toLocaleString('en-IN')}` : '—'}
+                        <td className="px-4 py-3 text-emerald-600 font-medium">₹{(inv.amountPaid||0).toLocaleString('en-IN')}</td>
+                        <td className={cn("px-4 py-3 font-bold", balance > 0 ? "text-red-600" : "text-neutral-400")}>
+                          {balance > 0 ? `₹${balance.toLocaleString('en-IN')}` : '—'}
                         </td>
                         <td className="px-4 py-3"><StatusBadge status={inv.paymentStatus} /></td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5">
+                            <Button size="sm" variant="outline" onClick={() => handlePrint(inv)}
+                                className="h-7 rounded-lg border-neutral-200 text-neutral-600 text-xs px-2.5 gap-1 hover:border-[#0F3D3E]/30" title="Print Invoice">
+                                <Printer className="w-3 h-3" />
+                            </Button>
                             {(inv.paymentStatus === 'pending' || inv.paymentStatus === 'partial') && (<>
                               <Button size="sm" onClick={() => setRecordTarget(inv)}
-                                className="h-7 rounded-lg bg-[#0F3D3E] text-white text-xs px-2.5 gap-1">
+                                className="h-7 rounded-lg bg-[#0F3D3E] text-white text-xs px-2.5 gap-1 hover:bg-[#0a2e2f]">
                                 <IndianRupee className="w-3 h-3" /> Pay
                               </Button>
                               <Button size="sm" variant="outline" onClick={() => handleGenerateLink(inv)}
                                 disabled={generatingLinkFor === inv._id}
-                                className="h-7 rounded-lg border-[#5FB3A5] text-[#0F3D3E] text-xs px-2.5 gap-1">
+                                className="h-7 rounded-lg border-[#5FB3A5] text-[#0F3D3E] text-xs px-2.5 gap-1 hover:bg-[#F5F7F7]">
                                 <Link className="w-3 h-3" /> {generatingLinkFor === inv._id ? '…' : 'Link'}
                               </Button>
                               <Button size="sm" variant="outline" onClick={() => setWaiveTarget(inv)}
-                                className="h-7 rounded-lg border-neutral-200 text-neutral-500 text-xs px-2.5 gap-1">
+                                className="h-7 rounded-lg border-neutral-200 text-neutral-500 text-xs px-2.5 gap-1 hover:text-red-600 hover:border-red-200" title="Waive / Void Invoice">
                                 <Ban className="w-3 h-3" />
                               </Button>
                             </>)}
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

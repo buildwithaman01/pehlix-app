@@ -10,6 +10,28 @@ import { config } from '../../config/index.js';
 
 export const InvoiceController = {
   /**
+   * Fetch a single invoice by ID
+   */
+  async getInvoiceById(req, res, next) {
+    try {
+      const { id } = req.params;
+      const labId = req.user.labId;
+
+      const invoice = await Invoice.findOne({ _id: id, labId, isDeleted: { $ne: true } })
+        .populate('visitId', 'visitDate patientId source referringDoctor')
+        .lean();
+
+      if (!invoice) {
+        throw new AppError('Invoice not found', 404);
+      }
+
+      sendSuccess(res, invoice, 'Invoice retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
    * Fetch all invoices for a lab
    */
   async getInvoices(req, res, next) {
