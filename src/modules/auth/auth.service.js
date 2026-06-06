@@ -128,12 +128,13 @@ const AuthService = {
       throw new AppError('JWT Access Private Key is missing or misconfigured.', 'INTERNAL_SERVER_ERROR', 500);
     }
 
-    // Expected keys in payload: userId, labId, role, permissions
+    // Expected keys in payload: userId, labId, role, roles, permissions
     return jwt.sign(
       {
         userId: payload.userId,
         labId: payload.labId,
         role: payload.role,
+        roles: payload.roles,
         permissions: payload.permissions
       },
       privateKey,
