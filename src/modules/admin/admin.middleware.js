@@ -52,7 +52,7 @@ export function superAdminAudit(req, res, next) {
       const logData = {
         labId: req.user?.labId || null,
         userId: req.user?.userId || null,
-        role: req.user?.role || null,
+        role: req.user?.roles ? req.user.roles.join(',') : (req.user?.role || null),
         action: `${req.method} ${req.originalUrl || req.path}`,
         statusCode: res.statusCode,
         duration,

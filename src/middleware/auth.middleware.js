@@ -23,7 +23,8 @@ export async function authenticate(req, res, next) {
     req.user = {
       userId: decoded.userId,
       labId: decoded.labId,
-      roles: decoded.roles || [],
+      roles: decoded.roles || (decoded.role ? [decoded.role] : []),
+      role: decoded.role || null, // preserve for deep legacy compat
       permissions: decoded.permissions,
       isImpersonation: decoded.isImpersonation || false,
       impersonatedBy: decoded.impersonatedBy || null

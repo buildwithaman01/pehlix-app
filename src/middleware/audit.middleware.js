@@ -63,8 +63,9 @@ export async function auditLog(req, res, next) {
       const duration = Date.now() - req.startTime;
       const logData = {
         labId: req.user?.labId || null,
-        userId: req.user?.userId || null,
-        role: req.user?.role || null,
+        userId: req.user?.userId || req.user?.id || null,
+        userEmail: req.user?.email || null,
+        role: req.user?.roles ? req.user.roles.join(',') : (req.user?.role || null),
         action: `${req.method} ${req.originalUrl || req.path}`,
         statusCode: res.statusCode,
         duration,
