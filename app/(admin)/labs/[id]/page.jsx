@@ -180,13 +180,13 @@ export default function LabDetailPage({ params: paramsPromise }) {
   const impersonateMutation = useMutation({
     mutationFn: ({ userId, reason }) => adminApi.impersonate(id, userId, reason),
     onSuccess: (data) => {
-      toast.success(`Impersonating ${data.targetUser.name} as ${data.targetUser.role}`);
+      toast.success(`Impersonating ${data.targetUser.name} as ${data.targetUser.roles.join(', ')}`);
       
       // Update global auth store with impersonated user information and access token
       setUser({
         _id: data.targetUser.name, // Save owner details
         name: data.targetUser.name,
-        role: data.targetUser.role,
+        roles: data.targetUser.roles,
         labId: id,
         isImpersonated: true,
         impersonationReason: impersonateReason

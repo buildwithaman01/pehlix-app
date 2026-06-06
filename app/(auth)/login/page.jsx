@@ -83,13 +83,13 @@ export default function LoginPage() {
       setUser(user, accessToken);
       toast.success(`Welcome back, ${user.name || 'there'}!`);
       
-      if (user.role === 'superAdmin') {
+      if (user.roles?.includes('superAdmin')) {
         router.push('/platform');
-      } else if (user.role === 'doctor') {
+      } else if (user.roles?.includes('doctor')) {
         router.push('/portal/doctor/dashboard');
-      } else if (user.role === 'patient') {
+      } else if (user.roles?.includes('patient')) {
         router.push('/portal/patient/reports');
-      } else if (user.role === 'phlebotomist') {
+      } else if (user.roles?.includes('phlebotomist')) {
         router.push('/portal/phlebo/jobs');
       } else {
         router.push('/dashboard');

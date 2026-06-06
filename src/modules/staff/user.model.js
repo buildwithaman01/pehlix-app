@@ -20,9 +20,13 @@ const userSchema = new mongoose.Schema({
     index: true
   },
   role: {
+    type: String, // Legacy, kept for backwards compatibility during migration
+  },
+  roles: [{
     type: String,
     enum: [
       'owner',
+      'admin',
       'pathologist',
       'technician',
       'receptionist',
@@ -31,8 +35,12 @@ const userSchema = new mongoose.Schema({
       'patient',
       'collectionCenter',
       'superAdmin'
-    ],
-    required: true
+    ]
+  }],
+  jobTitle: {
+    type: String,
+    trim: true,
+    default: null
   },
   name: {
     type: String,

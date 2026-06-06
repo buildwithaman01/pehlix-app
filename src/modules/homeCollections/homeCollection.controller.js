@@ -32,7 +32,7 @@ export const HomeCollectionController = {
 
   async getPhlebotomistJobs(req, res, next) {
     try {
-      const phlebotomistId = req.user.role === 'phlebotomist' ? req.user.userId : (req.query.phlebotomistId || req.user.userId);
+      const phlebotomistId = (req.user.roles && req.user.roles.includes('phlebotomist')) ? req.user.userId : (req.query.phlebotomistId || req.user.userId);
       const date = req.query.date || new Date().toISOString();
       const jobs = await HomeCollectionService.getPhlebotomistJobs(
         req.user.labId,

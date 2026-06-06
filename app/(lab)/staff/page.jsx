@@ -27,13 +27,23 @@ const ROLES = [
 
 function AddStaffDialog({ open, onClose, editStaff = null }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState(editStaff || {
-    name: '',
-    phone: '',
-    email: '',
-    password: '',
-    role: 'receptionist',
-    signature: ''
+  const [form, setForm] = useState(() => {
+    if (editStaff) {
+      return {
+        ...editStaff,
+        roles: editStaff.roles || (editStaff.role ? [editStaff.role] : []),
+        jobTitle: editStaff.jobTitle || ''
+      };
+    }
+    return {
+      name: '',
+      phone: '',
+      email: '',
+      password: '',
+      roles: ['receptionist'],
+      jobTitle: '',
+      signature: ''
+    };
   });
   const [sigFileName, setSigFileName] = useState('');
 
@@ -68,8 +78,8 @@ function AddStaffDialog({ open, onClose, editStaff = null }) {
 
   function handleSubmit(e) {
     e.preventDefault();
-    if (!form.name || !form.phone || !form.email || (!editStaff && !form.password)) {
-      toast.error('Name, email, phone and password are required');
+    if (!form.name || !form.phone || !form.email || (!editStaff && !form.password) || !form.roles || form.roles.length === 0) {
+      toast.error('Name, email, phone, password and at least one role are required');
       return;
     }
     mutation.mutate(form);
@@ -108,16 +118,33 @@ function AddStaffDialog({ open, onClose, editStaff = null }) {
           )}
 
           <div className="space-y-1.5">
-            <Label>Assign System Role</Label>
-            <Select value={form.role} onValueChange={f('role')}>
-              <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label>Job Title (Display Name)</Label>
+            <Input value={form.jobTitle || ''} onChange={e => f('jobTitle')(e.target.value)} className="rounded-xl" placeholder="e.g. Senior Pathologist" />
           </div>
 
-          {form.role === 'pathologist' && (
+          <div className="space-y-2">
+            <Label>System Permissions (Select all that apply) <span className="text-red-500">*</span></Label>
+            <div className="grid grid-cols-2 gap-2 p-3 border border-neutral-200 rounded-xl bg-neutral-50/50">
+              {ROLES.map(r => (
+                <label key={r.value} className="flex items-center gap-2 text-sm text-[#1E1E1E] cursor-pointer hover:bg-neutral-100 p-1.5 rounded transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={form.roles.includes(r.value)}
+                    onChange={(e) => {
+                      const newRoles = e.target.checked 
+                        ? [...form.roles, r.value] 
+                        : form.roles.filter(role => role !== r.value);
+                      f('roles')(newRoles);
+                    }}
+                    className="w-4 h-4 rounded text-emerald-deep focus:ring-emerald-deep"
+                  />
+                  <span>{r.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {form.roles.includes('pathologist') && (
             <div className="space-y-1.5 border border-dashed border-[#5FB3A5]/40 rounded-xl p-3 bg-[#5FB3A5]/2">
               <Label className="flex items-center gap-1.5 text-xs font-semibold text-[#0F3D3E]">
                 <FileSignature className="w-3.5 h-3.5" /> Pathologist Signature Upload
@@ -176,7 +203,7 @@ export default function StaffPage() {
 
   const filteredStaff = staff.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.phone.includes(search);
-    const matchesRole = roleFilter === 'all' || s.role === roleFilter;
+    const matchesRole = roleFilter === 'all' || s.roles?.includes(roleFilter) || s.role === roleFilter;
     return matchesSearch && matchesRole;
   });
 
@@ -225,9 +252,13 @@ export default function StaffPage() {
             )}>
               <div>
                 <div className="flex justify-between items-start mb-2.5">
-                  <Badge variant="secondary" className="bg-[#0F3D3E]/5 text-[#0F3D3E] border-[#0F3D3E]/10 rounded-lg capitalize px-2.5 py-0.5">
-                    {member.role}
-                  </Badge>
+                  <div className="flex flex-wrap gap-1">
+                    {(member.roles || (member.role ? [member.role] : [])).map(r => (
+                      <Badge key={r} variant="secondary" className="bg-[#0F3D3E]/5 text-[#0F3D3E] border-[#0F3D3E]/10 rounded-lg capitalize px-2 py-0.5 text-[10px]">
+                        {r}
+                      </Badge>
+                    ))}
+                  </div>
                   <button
                     onClick={() => toggleActiveMutation.mutate({ id: member._id, isActive: !member.isActive })}
                     className={cn('w-9 h-5 rounded-full relative transition-colors flex items-center shrink-0',
@@ -241,6 +272,7 @@ export default function StaffPage() {
                 </div>
 
                 <p className="font-bold text-base text-[#1E1E1E] leading-tight mb-1">{member.name}</p>
+                {member.jobTitle && <p className="text-xs text-neutral-500 font-medium mb-1">{member.jobTitle}</p>}
 
                 <div className="space-y-1 mt-3">
                   <div className="flex items-center gap-2 text-xs text-neutral-500">
@@ -255,13 +287,13 @@ export default function StaffPage() {
               </div>
 
               <div className="border-t border-neutral-100 mt-4 pt-3 flex justify-between items-center">
-                {member.role === 'pathologist' && member.signature ? (
+                {(member.roles?.includes('pathologist') || member.role === 'pathologist') && member.signature ? (
                   <div className="h-8 w-20 flex items-center justify-center border rounded p-0.5 bg-neutral-50">
                     <img src={member.signature} alt="Sig" className="max-w-full max-h-full object-contain" />
                   </div>
                 ) : (
                   <span className="text-[10px] text-neutral-400">
-                    {member.role === 'pathologist' ? 'No signature uploaded' : 'Regular staff account'}
+                    {(member.roles?.includes('pathologist') || member.role === 'pathologist') ? 'No signature uploaded' : 'Regular staff account'}
                   </span>
                 )}
 

@@ -16,10 +16,10 @@ export const StaffController = {
         return sendError(res, 'AUTH_INSUFFICIENT_PERMISSIONS', 'Lab ID is missing in user context', {}, 403);
       }
 
-      const roles = ['receptionist', 'technician', 'pathologist', 'phlebotomist'];
+      const staffRoles = ['receptionist', 'technician', 'pathologist', 'phlebotomist'];
       const staff = await User.find({
         labId,
-        role: { $in: roles }
+        roles: { $in: staffRoles }
       }).select('-passwordHash');
 
       return sendSuccess(res, staff, 'Staff list retrieved successfully');
@@ -38,10 +38,10 @@ export const StaffController = {
         return sendError(res, 'AUTH_INSUFFICIENT_PERMISSIONS', 'Lab ID is missing in user context', {}, 403);
       }
 
-      const { name, phone, email, role, password, signature, qualifications, registrationNumber, signatureImageKey } = req.body;
+      const { name, phone, email, roles, jobTitle, password, signature, qualifications, registrationNumber, signatureImageKey } = req.body;
 
-      if (!name || !phone || !role || !password) {
-        return sendError(res, 'VALIDATION_FAILED', 'Missing required fields (name, phone, role, password)', {}, 400);
+      if (!name || !phone || !roles || roles.length === 0 || !password) {
+        return sendError(res, 'VALIDATION_FAILED', 'Missing required fields (name, phone, roles, password)', {}, 400);
       }
 
       // Check if user already exists with phone or email using blind indexes
@@ -65,7 +65,8 @@ export const StaffController = {
         name,
         phone,
         email,
-        role,
+        roles,
+        jobTitle,
         passwordHash,
         signature,
         qualifications,
@@ -90,7 +91,7 @@ export const StaffController = {
     try {
       const labId = req.user.labId;
       const { id } = req.params;
-      const { name, phone, email, role, password, signature, isActive, qualifications, registrationNumber, signatureImageKey } = req.body;
+      const { name, phone, email, roles, jobTitle, password, signature, isActive, qualifications, registrationNumber, signatureImageKey } = req.body;
 
       if (!labId) {
         return sendError(res, 'AUTH_INSUFFICIENT_PERMISSIONS', 'Lab ID is missing in user context', {}, 403);
@@ -122,7 +123,8 @@ export const StaffController = {
       }
 
       if (name) staff.name = name;
-      if (role) staff.role = role;
+      if (roles) staff.roles = roles;
+      if (jobTitle !== undefined) staff.jobTitle = jobTitle;
       if (signature !== undefined) staff.signature = signature;
       if (isActive !== undefined) staff.isActive = isActive;
       
@@ -156,7 +158,8 @@ export const StaffController = {
       const labId = req.user.labId;
 
       // Restrict update to owners or the user themselves (NABL compliance & Security)
-      if (req.user.role !== 'owner' && req.user.userId.toString() !== id.toString()) {
+      const isOwner = req.user.roles && req.user.roles.includes('owner');
+      if (!isOwner && req.user.userId.toString() !== id.toString()) {
         return sendError(res, 'AUTH_INSUFFICIENT_PERMISSIONS', 'You do not have permission to upload signature for this user', {}, 403);
       }
 

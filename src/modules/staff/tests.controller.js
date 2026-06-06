@@ -183,7 +183,7 @@ export const TestsController = {
       await AuditLog.create({
         labId,
         userId: req.user._id,
-        role: req.user.role,
+        role: (req.user.roles && req.user.roles.length > 0) ? req.user.roles[0] : 'unknown',
         action: 'custom_test_created',
         timestamp: new Date(),
         details: {
@@ -231,7 +231,7 @@ export const TestsController = {
       await AuditLog.create({
         labId,
         userId: req.user._id,
-        role: req.user.role,
+        role: (req.user.roles && req.user.roles.length > 0) ? req.user.roles[0] : 'unknown',
         action: 'test_parameters_reset',
         timestamp: new Date(),
         details: {
@@ -280,7 +280,7 @@ export const TestsController = {
       await AuditLog.create({
         labId,
         userId: req.user._id,
-        role: req.user.role,
+        role: (req.user.roles && req.user.roles.length > 0) ? req.user.roles[0] : 'unknown',
         action: 'test_settings_updated',
         timestamp: new Date(),
         details: {

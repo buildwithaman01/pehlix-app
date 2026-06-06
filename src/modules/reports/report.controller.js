@@ -124,7 +124,7 @@ export const ReportController = {
     try {
       const { id } = req.params;
       const labId = req.user.labId;
-      const userRole = req.user.role || 'staff';
+      const userRole = (req.user.roles && req.user.roles.length > 0) ? req.user.roles[0] : 'staff';
 
       const result = await ReportService.getReportWithSignedUrl(labId, id, userRole);
       return sendSuccess(res, { signedUrl: result.signedUrl }, 'Signed PDF URL generated successfully');

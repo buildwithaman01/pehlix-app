@@ -14,8 +14,8 @@ export function superAdminAuth(req, res, next) {
     if (err) return next(err);
 
     // Double check role
-    if (!req.user || req.user.role !== 'superAdmin') {
-      return sendError(res, 'AUTH_INSUFFICIENT_PERMISSIONS', 'Forbidden: Super Admin access required', {}, 403);
+    if (!req.user || !req.user.roles || !req.user.roles.includes('superAdmin')) {
+      return sendError(res, 'AUTH_INSUFFICIENT_PERMISSIONS', 'Super admin access required', {}, 403);
     }
 
     // IP whitelist verification

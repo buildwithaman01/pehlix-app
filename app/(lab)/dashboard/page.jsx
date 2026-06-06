@@ -46,7 +46,7 @@ export default function DashboardPage() {
   const [readyOutboxCount, setReadyOutboxCount] = useState(0);
 
   useEffect(() => {
-    if (!user || !['owner', 'receptionist'].includes(user.role)) return;
+    if (!user || !user.roles?.some(r => ['owner', 'receptionist'].includes(r))) return;
 
     const fetchStats = async () => {
       try {

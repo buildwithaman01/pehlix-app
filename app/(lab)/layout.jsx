@@ -52,13 +52,13 @@ export default function LabLayout({ children }) {
   const allowedRoles = ['owner', 'pathologist', 'technician', 'receptionist', 'superAdmin'];
 
   useEffect(() => {
-    if (isInitialized && (!user || !allowedRoles.includes(user.role))) {
+    if (isInitialized && (!user || !user.roles?.some(r => allowedRoles.includes(r)))) {
       router.push('/login');
     }
   }, [user, isInitialized, router]);
 
   useEffect(() => {
-    if (!user || !['owner', 'receptionist'].includes(user.role)) return;
+    if (!user || !user.roles?.some(r => ['owner', 'receptionist'].includes(r))) return;
 
     const fetchStats = async () => {
       try {
@@ -79,7 +79,7 @@ export default function LabLayout({ children }) {
 
   // Phase 3.7 — Poll critical monitor count (owner + pathologist)
   useEffect(() => {
-    if (!user || !['owner', 'pathologist'].includes(user.role)) return;
+    if (!user || !user.roles?.some(r => ['owner', 'pathologist'].includes(r))) return;
 
     const fetchCritical = async () => {
       try {
@@ -99,7 +99,7 @@ export default function LabLayout({ children }) {
 
   // Phase 3.8 — Poll in-app notifications (owner + pathologist)
   useEffect(() => {
-    if (!user || !['owner', 'pathologist'].includes(user.role)) return;
+    if (!user || !user.roles?.some(r => ['owner', 'pathologist'].includes(r))) return;
 
     const fetchNotifs = async () => {
       try {
@@ -135,13 +135,13 @@ export default function LabLayout({ children }) {
     );
   }
 
-  if (!user || !allowedRoles.includes(user.role)) {
+  if (!user || !user.roles?.some(r => allowedRoles.includes(r))) {
     return null; // Will redirect in useEffect
   }
 
   // Construct dynamic nav items with badge counts
   const navItems = [...NAV_ITEMS];
-  if (user && ['owner', 'receptionist'].includes(user.role)) {
+  if (user && user.roles?.some(r => ['owner', 'receptionist'].includes(r))) {
     const settingsIndex = navItems.findIndex(item => item.href === '/settings');
     if (settingsIndex !== -1) {
       navItems.splice(settingsIndex, 0, { name: 'WhatsApp Outbox', href: '/whatsapp-outbox', icon: MessageSquare, badge: readyCount });
@@ -151,7 +151,7 @@ export default function LabLayout({ children }) {
   }
 
   // Phase 3.7 — Critical Monitor nav item for owner/pathologist
-  if (user && ['owner', 'pathologist'].includes(user.role)) {
+  if (user && user.roles?.some(r => ['owner', 'pathologist'].includes(r))) {
     const analyticsIndex = navItems.findIndex(item => item.href === '/analytics');
     navItems.splice(analyticsIndex + 1, 0, {
       name: 'Critical Monitor',
@@ -163,7 +163,7 @@ export default function LabLayout({ children }) {
   }
 
   // Phase 3.10 — Audit Log nav item for owner
-  if (user && user.role === 'owner') {
+  if (user && user.roles?.includes('owner')) {
     navItems.push({ name: 'Audit Log', href: '/audit-log', icon: Shield });
   }
 

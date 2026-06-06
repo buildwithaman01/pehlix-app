@@ -113,6 +113,26 @@ function QueueCard({ item, onClick }) {
             {elapsed < 60 ? `${elapsed}m ago` : `${Math.floor(elapsed / 60)}h ${elapsed % 60}m ago`}
           </span>
         </div>
+        {item.parameters && item.parameters.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {item.parameters.slice(0, 4).map((p, idx) => (
+              <Badge 
+                key={idx} 
+                variant="outline" 
+                className={cn("text-[10px] px-1.5 py-0 border", 
+                  p.isFlagged || p.status?.startsWith('critical') 
+                    ? 'bg-amber-50/50 text-amber-700 border-amber-200/60' 
+                    : 'bg-neutral-50/50 text-neutral-500 border-neutral-200/60'
+                )}
+              >
+                {p.parameterName || p.name}: <span className="font-bold ml-1">{p.value}</span> {p.unit}
+              </Badge>
+            ))}
+            {item.parameters.length > 4 && (
+              <span className="text-[10px] text-neutral-400 self-center ml-1">+{item.parameters.length - 4} more</span>
+            )}
+          </div>
+        )}
       </div>
 
       <Button size="sm" className="rounded-xl bg-[#0F3D3E] hover:bg-[#0a2e2f] text-white text-xs shrink-0 gap-1">

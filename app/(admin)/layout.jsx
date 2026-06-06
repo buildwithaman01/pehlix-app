@@ -40,7 +40,7 @@ export default function AdminLayout({ children }) {
     );
   }
 
-  if (!user || user.role !== 'superAdmin') {
+  if (!user || !user.roles || !user.roles.includes('superAdmin')) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-neutral-light font-satoshi p-6 text-center">
         <div className="w-16 h-16 rounded-2xl bg-red-100 flex items-center justify-center mb-4">

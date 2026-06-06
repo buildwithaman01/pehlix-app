@@ -30,7 +30,7 @@ const AuthController = {
       let patientExists = false;
       if (user) {
         const authorizedRoles = ['doctor', 'owner', 'patient', 'superAdmin'];
-        if (!authorizedRoles.includes(user.role)) {
+        if (!user.roles || !user.roles.some(r => authorizedRoles.includes(r))) {
           throw new AppError('Access denied. OTP login is restricted to authorized roles.', 'AUTH_OTP_DENIED', 403);
         }
       } else {
@@ -64,7 +64,7 @@ const AuthController = {
       }
 
       // Send OTP based on user role and available channels
-      const isStaffOrOwner = user && ['owner', 'superAdmin', 'pathologist', 'technician', 'receptionist'].includes(user.role);
+      const isStaffOrOwner = user && user.roles && user.roles.some(r => ['owner', 'superAdmin', 'pathologist', 'technician', 'receptionist', 'admin'].includes(r));
       
       let emailDispatched = false;
       let whatsappDispatched = false;
@@ -156,7 +156,7 @@ const AuthController = {
       
       if (user) {
         const authorizedRoles = ['doctor', 'owner', 'patient', 'superAdmin'];
-        if (!authorizedRoles.includes(user.role)) {
+        if (!user.roles || !user.roles.some(r => authorizedRoles.includes(r))) {
           throw new AppError('Access denied. User not authorized for OTP login.', 'AUTH_OTP_DENIED', 403);
         }
       } else {
@@ -178,7 +178,7 @@ const AuthController = {
         const patientName = `${patientRecord.firstName} ${patientRecord.lastName || ''}`.trim() || `Patient-${patientPhone ? patientPhone.slice(-4) : 'User'}`;
         
         user = await User.create({
-          role: 'patient',
+          roles: ['patient'],
           name: patientName,
           phone: patientPhone,
           email: patientEmail,
@@ -192,14 +192,21 @@ const AuthController = {
       user.tokenVersion = (user.tokenVersion || 0) + 1;
       await user.save();
 
-      // Determine permissions
-      const permissions = user.role === 'superAdmin' ? ['*'] : (PERMISSIONS[user.role] || []);
+      // Determine permissions (merge all permissions for all roles)
+      let permissions = [];
+      if (user.roles && user.roles.includes('superAdmin')) {
+        permissions = ['*'];
+      } else if (user.roles) {
+        user.roles.forEach(role => {
+          if (PERMISSIONS[role]) permissions.push(...PERMISSIONS[role]);
+        });
+      }
 
       const accessToken = AuthService.generateAccessToken({
         userId: user._id,
         labId: user.labId,
-        role: user.role,
-        permissions
+        roles: user.roles || [],
+        permissions: [...new Set(permissions)]
       });
 
       const refreshToken = AuthService.generateRefreshToken(user._id, user.tokenVersion);
@@ -259,13 +266,20 @@ const AuthController = {
       }
 
       // Determine permissions
-      const permissions = user.role === 'superAdmin' ? ['*'] : (PERMISSIONS[user.role] || []);
+      let permissions = [];
+      if (user.roles && user.roles.includes('superAdmin')) {
+        permissions = ['*'];
+      } else if (user.roles) {
+        user.roles.forEach(role => {
+          if (PERMISSIONS[role]) permissions.push(...PERMISSIONS[role]);
+        });
+      }
 
       const accessToken = AuthService.generateAccessToken({
         userId: user._id,
         labId: user.labId,
-        role: user.role,
-        permissions
+        roles: user.roles || [],
+        permissions: [...new Set(permissions)]
       });
 
       const refreshToken = AuthService.generateRefreshToken(user._id, user.tokenVersion);
@@ -296,13 +310,20 @@ const AuthController = {
       const user = await AuthService.validateRefreshToken(token);
 
       // Determine permissions
-      const permissions = user.role === 'superAdmin' ? ['*'] : (PERMISSIONS[user.role] || []);
+      let permissions = [];
+      if (user.roles && user.roles.includes('superAdmin')) {
+        permissions = ['*'];
+      } else if (user.roles) {
+        user.roles.forEach(role => {
+          if (PERMISSIONS[role]) permissions.push(...PERMISSIONS[role]);
+        });
+      }
 
       const accessToken = AuthService.generateAccessToken({
         userId: user._id,
         labId: user.labId,
-        role: user.role,
-        permissions
+        roles: user.roles || [],
+        permissions: [...new Set(permissions)]
       });
 
       const userObj = user.toObject();
@@ -359,7 +380,7 @@ const AuthController = {
         throw new AppError('User not found', 'USER_NOT_FOUND', 404);
       }
 
-      if (user.role === 'patient') {
+      if (user.roles && user.roles.includes('patient') && user.roles.length === 1) {
         throw new AppError('Patients are not allowed to set passwords. OTP login only.', 'ACCESS_DENIED', 403);
       }
 

@@ -51,13 +51,13 @@ export default function SetPasswordPage() {
       setUser(updatedUser, accessToken);
 
       // Route to the role-based dashboard
-      if (updatedUser.role === 'superAdmin') {
+      if (updatedUser.roles?.includes('superAdmin')) {
         router.push('/platform');
-      } else if (updatedUser.role === 'doctor') {
+      } else if (updatedUser.roles?.includes('doctor')) {
         router.push('/portal/doctor/dashboard');
-      } else if (updatedUser.role === 'patient') {
+      } else if (updatedUser.roles?.includes('patient')) {
         router.push('/portal/patient/reports');
-      } else if (updatedUser.role === 'phlebotomist') {
+      } else if (updatedUser.roles?.includes('phlebotomist')) {
         router.push('/portal/phlebo/jobs');
       } else {
         router.push('/dashboard');

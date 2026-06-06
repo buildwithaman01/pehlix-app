@@ -23,7 +23,7 @@ export async function authenticate(req, res, next) {
     req.user = {
       userId: decoded.userId,
       labId: decoded.labId,
-      role: decoded.role,
+      roles: decoded.roles || [],
       permissions: decoded.permissions,
       isImpersonation: decoded.isImpersonation || false,
       impersonatedBy: decoded.impersonatedBy || null
@@ -75,13 +75,13 @@ export async function authenticateSuperAdmin(req, res, next) {
 
     const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] });
 
-    if (decoded.role !== 'superAdmin') {
+    if (!decoded.roles || !decoded.roles.includes('superAdmin')) {
       return sendError(res, 'AUTH_INSUFFICIENT_PERMISSIONS', 'Forbidden: Super Admin access required', {}, 403);
     }
 
     req.user = {
       userId: decoded.userId,
-      role: decoded.role,
+      roles: decoded.roles,
       permissions: decoded.permissions || ['*'],
       isImpersonation: decoded.isImpersonation || false,
       impersonatedBy: decoded.impersonatedBy || null

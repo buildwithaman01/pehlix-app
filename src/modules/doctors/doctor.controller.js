@@ -138,7 +138,7 @@ export const DoctorController = {
 
   async getPortalPatients(req, res, next) {
     try {
-      if (req.user.role !== 'doctor') {
+      if (!req.user.roles || !req.user.roles.includes('doctor')) {
         throw new AppError('Unauthorized: Access denied', 'AUTH_INSUFFICIENT_PERMISSIONS', 403);
       }
 
@@ -175,7 +175,7 @@ export const DoctorController = {
 
   async getPortalCommissions(req, res, next) {
     try {
-      if (req.user.role !== 'doctor') {
+      if (!req.user.roles || !req.user.roles.includes('doctor')) {
         throw new AppError('Unauthorized: Access denied', 'AUTH_INSUFFICIENT_PERMISSIONS', 403);
       }
 
