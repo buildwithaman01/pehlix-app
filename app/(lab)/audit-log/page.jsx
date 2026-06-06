@@ -25,15 +25,18 @@ function ActionBadge({ action }) {
 
 function exportToCSV(entries) {
   const headers = ['Timestamp', 'User', 'Role', 'Action', 'Patient', 'Test', 'Reason'];
-  const rows = entries.map(e => [
-    new Date(e.performedAt).toLocaleString(),
-    e.performedBy?.name || e.performedByName || '—',
-    e.performedBy?.role || e.performedByRole || '—',
-    e.action,
-    e.patientId ? `${e.patientId.firstName} ${e.patientId.lastName || ''} (${e.patientId.patientCode})` : '—',
-    e.testId?.name || e.testName || '—',
-    e.reason || '—'
-  ]);
+  const rows = entries.map(e => {
+    const performedName = e.performedBy ? `${e.performedBy.firstName} ${e.performedBy.lastName}`.trim() : (e.performedByName || '—');
+    return [
+      new Date(e.performedAt).toLocaleString(),
+      performedName,
+      e.performedBy?.role || e.performedByRole || '—',
+      e.action,
+      e.patientId ? `${e.patientId.firstName} ${e.patientId.lastName || ''} (${e.patientId.patientCode})` : '—',
+      e.testId?.name || e.testName || '—',
+      e.reason || '—'
+    ];
+  });
 
   const csvContent = [headers, ...rows]
     .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
@@ -106,18 +109,18 @@ export default function AuditLogPage() {
     });
   }
 
-  const filteredEntries = searchTerm
-    ? entries.filter(e => {
-        const patient = e.patientId ? `${e.patientId.firstName} ${e.patientId.lastName || ''} ${e.patientId.patientCode}` : '';
-        const user = e.performedBy?.name || e.performedByName || '';
-        const test = e.testId?.name || e.testName || '';
-        const s = searchTerm.toLowerCase();
-        return patient.toLowerCase().includes(s) || user.toLowerCase().includes(s) || test.toLowerCase().includes(s);
-      })
-    : entries;
+    const filteredEntries = searchTerm
+      ? entries.filter(e => {
+          const patient = e.patientId ? `${e.patientId.firstName} ${e.patientId.lastName || ''} ${e.patientId.patientCode}` : '';
+          const performedName = e.performedBy ? `${e.performedBy.firstName} ${e.performedBy.lastName}`.trim() : (e.performedByName || '');
+          const test = e.testId?.name || e.testName || '';
+          const s = searchTerm.toLowerCase();
+          return patient.toLowerCase().includes(s) || performedName.toLowerCase().includes(s) || test.toLowerCase().includes(s);
+        })
+      : entries;
 
   return (
-    <div className="min-h-screen bg-[#080a0e] text-white p-6 space-y-6">
+    <div className="min-h-screen bg-[#05060A] p-4 sm:p-6 lg:p-8 font-satoshi text-gray-200 [color-scheme:dark]">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -164,9 +167,9 @@ export default function AuditLogPage() {
             onChange={e => setActionFilter(e.target.value)}
             className="pl-9 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors appearance-none min-w-[160px]"
           >
-            <option value="">All Actions</option>
+            <option value="" className="bg-[#0A0C12] text-white">All Actions</option>
             {Object.entries(ACTION_CONFIG).map(([key, cfg]) => (
-              <option key={key} value={key}>{cfg.label}</option>
+              <option key={key} value={key} className="bg-[#0A0C12] text-white">{cfg.label}</option>
             ))}
           </select>
         </div>
@@ -241,7 +244,9 @@ export default function AuditLogPage() {
                             <User size={12} className="text-indigo-400" />
                           </div>
                           <div>
-                            <p className="text-white font-medium text-xs">{user?.name || entry.performedByName || 'System'}</p>
+                            <p className="text-white font-medium text-xs">
+                              {user ? `${user.firstName} ${user.lastName}`.trim() : (entry.performedByName || 'System')}
+                            </p>
                             <p className="text-gray-500 text-xs capitalize">{user?.role || entry.performedByRole || '—'}</p>
                           </div>
                         </div>

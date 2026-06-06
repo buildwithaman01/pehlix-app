@@ -111,7 +111,7 @@ export default function CriticalMonitorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#080a0e] text-white p-6 space-y-6">
+    <div className="min-h-screen bg-[#05060A] p-4 sm:p-6 lg:p-8 font-satoshi [color-scheme:dark]">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
