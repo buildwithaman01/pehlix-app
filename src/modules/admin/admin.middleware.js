@@ -18,6 +18,7 @@ export function superAdminAuth(req, res, next) {
       return sendError(res, 'AUTH_INSUFFICIENT_PERMISSIONS', 'Super admin access required', {}, 403);
     }
 
+    /*
     // IP whitelist verification
     let clientIp = req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || '';
     if (clientIp.includes(',')) {
@@ -34,6 +35,7 @@ export function superAdminAuth(req, res, next) {
       console.log(`[SuperAdminAuth] Blocked unauthorized IP: ${clientIp}`);
       return sendError(res, 'AUTH_INSUFFICIENT_PERMISSIONS', 'Access denied from this IP address', {}, 403);
     }
+    */
 
     next();
   });

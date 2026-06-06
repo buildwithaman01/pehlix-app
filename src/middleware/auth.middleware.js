@@ -40,11 +40,12 @@ export async function authenticate(req, res, next) {
 }
 
 /**
- * Middleware to authenticate Super Admin requests using HS256 JWT and IP whitelisting.
+ * Middleware to authenticate Super Admin requests using RS256 JWT.
+ * Note: IP Whitelisting is temporarily disabled to support dynamic IPs for the founder.
  */
 export async function authenticateSuperAdmin(req, res, next) {
   try {
-    // 1. IP Whitelist Verification
+    /* 1. IP Whitelist Verification (Disabled for dynamic IPs)
     let clientIp = req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || '';
     if (clientIp.includes(',')) {
       clientIp = clientIp.split(',')[0].trim();
@@ -60,6 +61,7 @@ export async function authenticateSuperAdmin(req, res, next) {
       console.log(`[SuperAdminAuth IP check] Blocked IP: "${clientIp}"`);
       return sendError(res, 'AUTH_INSUFFICIENT_PERMISSIONS', `Forbidden: client IP not whitelisted (${clientIp})`, {}, 403);
     }
+    */
 
     // 2. Token Authentication
     const authHeader = req.headers.authorization;
