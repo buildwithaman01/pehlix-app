@@ -155,6 +155,10 @@ const AuthController = {
       }
       
       if (user) {
+        if (user.role && (!user.roles || user.roles.length === 0)) {
+          user.roles = [user.role];
+          await user.save();
+        }
         const authorizedRoles = ['doctor', 'owner', 'patient', 'superAdmin'];
         if (!user.roles || !user.roles.some(r => authorizedRoles.includes(r))) {
           throw new AppError('Access denied. User not authorized for OTP login.', 'AUTH_OTP_DENIED', 403);
@@ -239,6 +243,11 @@ const AuthController = {
       const isMatch = await bcrypt.compare(password, user.passwordHash);
       if (!isMatch) {
         return sendError(res, 'AUTH_TOKEN_INVALID', 'Invalid email or password', {}, 401);
+      }
+
+      if (user.role && (!user.roles || user.roles.length === 0)) {
+        user.roles = [user.role];
+        await user.save();
       }
 
       if (!user.isActive) {
