@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api/extended.api';
-import { format } from 'date-fns';
 import { 
   ShieldAlert, 
   FileWarning, 
@@ -185,7 +184,7 @@ export default function SecurityAndLogsPage() {
                         </p>
                         <div className="flex items-center gap-2 mt-3 text-xs text-neutral-500">
                           <Clock className="w-3.5 h-3.5" />
-                          <span>Last attempted: {format(new Date(job.lastFailureTimestamp), 'PPp')}</span>
+                          <span>Last attempted: {new Date(job.lastFailureTimestamp).toLocaleString()}</span>
                         </div>
                       </div>
                       <Button

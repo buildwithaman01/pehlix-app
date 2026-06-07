@@ -112,7 +112,7 @@ function ChainOfCustodyDialog({ open, onClose, sampleId }) {
                     </div>
                     <div className="text-sm text-neutral-500">
                       By {event.performedBy?.name || 'System'}
-                      {event.notes && <div className="mt-1 text-xs italic">"{event.notes}"</div>}
+                      {event.notes && <div className="mt-1 text-xs italic">&quot;{event.notes}&quot;</div>}
                     </div>
                   </div>
                 </div>
