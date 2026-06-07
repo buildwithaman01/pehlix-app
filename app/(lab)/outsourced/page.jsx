@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Send, Search, Building2, Clock, CheckCircle2, Truck } from 'lucide-react';
 import { format } from 'date-fns';
 
+import { apiClient } from '@/lib/api/client';
+
 export default function OutsourcedPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,9 +16,8 @@ export default function OutsourcedPage() {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch('/api/outsourced');
-      const data = await res.json();
-      if (data.success) setOrders(data.data);
+      const { data } = await apiClient.get('/outsourced');
+      if (data?.status === 'success') setOrders(data.data);
     } catch (error) {
       console.error('Failed to fetch outsourced orders', error);
     } finally {
@@ -26,11 +27,7 @@ export default function OutsourcedPage() {
 
   const updateStatus = async (id, status) => {
     try {
-      await fetch(`/api/outsourced/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
+      await apiClient.patch(`/outsourced/${id}/status`, { status });
       fetchOrders();
     } catch (error) {
       console.error('Failed to update order', error);

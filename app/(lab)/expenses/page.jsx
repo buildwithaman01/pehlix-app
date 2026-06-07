@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Wallet, Trash2, IndianRupee } from 'lucide-react';
 import { format } from 'date-fns';
 
+import { apiClient } from '@/lib/api/client';
+
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,9 +22,8 @@ export default function ExpensesPage() {
 
   const fetchExpenses = async () => {
     try {
-      const res = await fetch('/api/expenses');
-      const data = await res.json();
-      if (data.success) setExpenses(data.data);
+      const { data } = await apiClient.get('/expenses');
+      if (data?.status === 'success') setExpenses(data.data);
     } catch (error) {
       console.error('Failed to fetch expenses', error);
     } finally {
@@ -33,12 +34,11 @@ export default function ExpensesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, amount: Number(formData.amount) })
+      const res = await apiClient.post('/expenses', { 
+        ...formData, 
+        amount: Number(formData.amount) 
       });
-      if (res.ok) {
+      if (res.data?.status === 'success') {
         setIsAdding(false);
         setFormData({ title: '', amount: '', category: 'Miscellaneous', description: '' });
         fetchExpenses();
@@ -51,7 +51,7 @@ export default function ExpensesPage() {
   const handleDelete = async (id) => {
     if (!confirm('Delete this expense?')) return;
     try {
-      await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+      await apiClient.delete(`/expenses/${id}`);
       fetchExpenses();
     } catch (error) {
       console.error('Failed to delete expense', error);

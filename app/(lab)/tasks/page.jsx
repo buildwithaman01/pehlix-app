@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, CheckSquare, Clock, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
+import { apiClient } from '@/lib/api/client';
+
 export default function TasksPage() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,9 +20,8 @@ export default function TasksPage() {
 
   const fetchTasks = async () => {
     try {
-      const res = await fetch('/api/tasks');
-      const data = await res.json();
-      if (data.success) setTasks(data.data);
+      const { data } = await apiClient.get('/tasks');
+      if (data?.status === 'success') setTasks(data.data);
     } catch (error) {
       console.error('Failed to fetch tasks', error);
     } finally {
@@ -31,12 +32,8 @@ export default function TasksPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      if (res.ok) {
+      const res = await apiClient.post('/tasks', formData);
+      if (res.data?.status === 'success') {
         setIsAdding(false);
         setFormData({ title: '', description: '', priority: 'medium', status: 'todo' });
         fetchTasks();
@@ -48,11 +45,7 @@ export default function TasksPage() {
 
   const updateStatus = async (id, status) => {
     try {
-      await fetch(`/api/tasks/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
+      await apiClient.patch(`/tasks/${id}/status`, { status });
       fetchTasks();
     } catch (error) {
       console.error('Failed to update task', error);

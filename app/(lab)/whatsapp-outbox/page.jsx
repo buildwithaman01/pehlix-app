@@ -154,18 +154,14 @@ export default function WhatsAppOutboxPage() {
     const balance = selectedEntry.balanceAmount;
 
     try {
-      const res = await fetch(`/api/invoices/${invoiceId}/record-payment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: balance,
-          method: 'cash',
-          notes: 'Recorded full cash payment at WhatsApp Outbox manual send modal'
-        })
+      const res = await apiClient.post(`/invoices/${invoiceId}/record-payment`, {
+        amount: balance,
+        method: 'cash',
+        notes: 'Recorded full cash payment at WhatsApp Outbox manual send modal'
       });
-      const data = await res.json();
+      const data = res.data;
 
-      if (data.success) {
+      if (data.status === 'success') {
         toast.success('Payment of ₹' + balance + ' recorded successfully!');
         
         // Optimistically update entry details in-memory inside modal
