@@ -348,8 +348,7 @@ export const HomeCollectionService = {
       .populate('assignedPhlebotomist', 'name phone')
       .sort({ scheduledDate: -1, timeSlot: 1 })
       .skip(skip)
-      .limit(limitNum)
-      .lean();
+      .limit(limitNum);
 
     return {
       collections,
