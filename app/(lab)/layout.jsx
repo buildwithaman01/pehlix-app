@@ -28,6 +28,16 @@ import {
   Syringe,
   Globe
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { LogOut, Check } from 'lucide-react';
 
 const NAV_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -235,15 +245,122 @@ export default function LabLayout({ children }) {
 
       {/* Mobile Shell Wrapper */}
       <div className="flex flex-col flex-1 overflow-hidden print:overflow-visible print:h-auto">
-        {/* Mobile Header */}
-        <header className="flex items-center justify-between h-16 px-6 bg-white border-b md:hidden shrink-0 print:hidden">
-          <PehlixLogo variant="wordmark" className="text-xl" light={false} />
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-1 rounded-md text-emerald-deep hover:bg-neutral-light focus:outline-none"
-          >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+        {/* Desktop & Mobile Top Header */}
+        <header className="flex items-center justify-between md:justify-end h-16 px-6 bg-white border-b shrink-0 print:hidden z-10 shadow-sm">
+          {/* Mobile Left Side */}
+          <div className="flex items-center md:hidden">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-1 rounded-md text-emerald-deep hover:bg-neutral-light focus:outline-none mr-3"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+            <PehlixLogo variant="wordmark" className="text-xl" light={false} />
+          </div>
+
+          {/* Right Side Actions */}
+          <div className="flex items-center gap-4">
+            {/* Notifications */}
+            <DropdownMenu open={notifDropdownOpen} onOpenChange={setNotifDropdownOpen}>
+              <DropdownMenuTrigger asChild>
+                <button className="relative p-2 rounded-full text-neutral-500 hover:bg-neutral-100 transition-colors focus:outline-none">
+                  <Bell className="w-5 h-5" />
+                  {unreadNotifCount > 0 && (
+                    <span className="absolute top-1 right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-sm ring-2 ring-white">
+                      {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
+                    </span>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuLabel className="flex items-center justify-between">
+                  <span>Notifications</span>
+                  {unreadNotifCount > 0 && (
+                    <button onClick={markAllRead} className="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center">
+                      <Check className="w-3 h-3 mr-1" /> Mark all read
+                    </button>
+                  )}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <div className="max-h-[300px] overflow-y-auto">
+                  {recentNotifs.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-neutral-500">
+                      No new notifications
+                    </div>
+                  ) : (
+                    recentNotifs.map(n => (
+                      <div key={n._id} className="p-3 border-b last:border-0 hover:bg-neutral-50 flex flex-col gap-1">
+                        <div className="flex justify-between items-start">
+                          <span className="text-sm font-semibold text-neutral-900">{n.title}</span>
+                          <span className="text-[10px] text-neutral-400 whitespace-nowrap ml-2">
+                            {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-neutral-600 line-clamp-2">{n.message}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Profile Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 focus:outline-none group rounded-full p-0.5 hover:bg-neutral-100 transition-all">
+                  <Avatar className="h-9 w-9 border-2 border-emerald-100 group-hover:border-emerald-200 transition-all">
+                    <AvatarFallback className="bg-emerald-50 text-emerald-700 font-semibold text-sm uppercase">
+                      {user?.name?.charAt(0) || user?.firstName?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 p-2">
+                <div className="flex items-start gap-3 p-2 mb-2">
+                  <Avatar className="h-10 w-10 border border-neutral-200">
+                    <AvatarFallback className="bg-emerald-50 text-emerald-700 font-semibold uppercase">
+                      {user?.name?.charAt(0) || user?.firstName?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-neutral-900">{user?.name || user?.firstName || 'User'}</span>
+                    <span className="text-xs text-emerald-600 font-medium capitalize">
+                      {user?.roles?.[0] || 'Staff'}
+                    </span>
+                  </div>
+                </div>
+                
+                <DropdownMenuSeparator />
+                
+                <div className="px-2 py-1.5 mb-1">
+                  <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">Current Lab</span>
+                  <div className="text-sm font-medium text-neutral-800 truncate mt-0.5" title={user?.labId?.name}>
+                    🔬 {user?.labId?.name || 'My Lab'}
+                  </div>
+                </div>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem asChild className="cursor-pointer text-neutral-600 focus:bg-emerald-50 focus:text-emerald-700">
+                  <Link href="/settings" className="flex items-center">
+                    <Settings className="w-4 h-4 mr-2" />
+                    <span>Lab Settings</span>
+                  </Link>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem 
+                  className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700 mt-1"
+                  onClick={() => {
+                    useAuthStore.getState().clearUser();
+                    router.push('/login');
+                  }}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </header>
 
         {/* Mobile Navigation Drawer */}
