@@ -135,6 +135,7 @@ import testsRouter from './modules/staff/tests.routes.js';
 import whatsappOutboxRouter from './modules/whatsappOutbox/whatsappOutbox.routes.js';
 import resultAuditRouter from './modules/results/resultAudit.routes.js';
 import notificationRouter from './modules/notifications/notification.routes.js';
+import publicRouter from './modules/public/public.routes.js';
 
 // Internal Background Job Processing routes
 import mongoose from 'mongoose';
@@ -357,6 +358,7 @@ app.use('/api/tests', testsRouter);
 app.use('/api/whatsapp-outbox', whatsappOutboxRouter);
 app.use('/api/audit', resultAuditRouter);
 app.use('/api/notifications', notificationRouter);
+app.use('/api/public', publicRouter);
 app.use('/api/internal', internalRouter);
 
 // Global error handler — logs to Better Stack then sends JSON response
