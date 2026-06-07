@@ -24,8 +24,8 @@ export default function OnlineBookingsPage() {
   const bookings = response?.data?.visits || [];
   
   const filteredBookings = bookings.filter(b => 
-    b.patient?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    b.patient?.phone?.includes(searchTerm) ||
+    b.patientId?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    b.patientId?.phone?.includes(searchTerm) ||
     b.visitCode?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -94,7 +94,7 @@ export default function OnlineBookingsPage() {
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-bold text-[#1E1E1E] text-base">
-                        {booking.patient?.firstName} {booking.patient?.lastName}
+                        {booking.patientId?.firstName} {booking.patientId?.lastName}
                       </h3>
                       {getStatusBadge(booking.status)}
                     </div>
@@ -106,7 +106,7 @@ export default function OnlineBookingsPage() {
                         <Calendar className="w-3.5 h-3.5" />
                         {new Date(booking.createdAt).toLocaleDateString()}
                       </span>
-                      {booking.homeCollection ? (
+                      {booking.visitType === 'homeCollection' ? (
                         <span className="flex items-center gap-1 text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-medium">
                           <Truck className="w-3.5 h-3.5" />
                           Home Collection
@@ -124,9 +124,9 @@ export default function OnlineBookingsPage() {
                 <div className="flex flex-col lg:items-end gap-2 shrink-0">
                   <div className="flex flex-col items-end">
                     <span className="text-xs text-neutral-500">Total Amount</span>
-                    <span className="font-bold text-neutral-900">₹{booking.billing?.totalAmount || 0}</span>
+                    <span className="font-bold text-neutral-900">₹{booking.invoiceId?.totalAmount || 0}</span>
                   </div>
-                  <Link href={`/patients/${booking.patient?._id}`}>
+                  <Link href={`/patients/${booking.patientId?._id}`}>
                     <Button variant="outline" className="w-full lg:w-auto h-9 text-xs rounded-xl gap-2 font-semibold">
                       View Patient <ArrowRight className="w-3.5 h-3.5" />
                     </Button>
