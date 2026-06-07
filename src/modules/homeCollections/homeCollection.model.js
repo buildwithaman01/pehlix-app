@@ -44,8 +44,7 @@ const homeCollectionSchema = new mongoose.Schema({
   },
   assignedPhlebotomist: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    ref: 'User'
   },
   scheduledDate: {
     type: Date,

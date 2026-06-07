@@ -310,11 +310,11 @@ export default function PublicBookingPage() {
                   <SelectValue placeholder="Select Time" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="07:00 AM - 09:00 AM">7:00 AM - 9:00 AM</SelectItem>
-                  <SelectItem value="09:00 AM - 11:00 AM">9:00 AM - 11:00 AM</SelectItem>
-                  <SelectItem value="11:00 AM - 01:00 PM">11:00 AM - 1:00 PM</SelectItem>
-                  <SelectItem value="02:00 PM - 04:00 PM">2:00 PM - 4:00 PM</SelectItem>
-                  <SelectItem value="04:00 PM - 06:00 PM">4:00 PM - 6:00 PM</SelectItem>
+                  <SelectItem value="7-9am">7:00 AM - 9:00 AM</SelectItem>
+                  <SelectItem value="9-11am">9:00 AM - 11:00 AM</SelectItem>
+                  <SelectItem value="11am-1pm">11:00 AM - 1:00 PM</SelectItem>
+                  <SelectItem value="2-4pm">2:00 PM - 4:00 PM</SelectItem>
+                  <SelectItem value="4-6pm">4:00 PM - 6:00 PM</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -381,9 +381,9 @@ export default function PublicBookingPage() {
                     <SelectValue placeholder="Gender" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="M">Male</SelectItem>
-                    <SelectItem value="F">Female</SelectItem>
-                    <SelectItem value="O">Other</SelectItem>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -48,7 +48,7 @@ class PublicService {
         phone: patientData.phone,
         age: patientData.age,
         gender: patientData.gender,
-        patientId: `PID${Date.now().toString().slice(-6)}`
+        patientCode: `PID${Date.now().toString().slice(-6)}`
       });
       await patient.save();
     }
