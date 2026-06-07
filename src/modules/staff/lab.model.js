@@ -23,7 +23,10 @@ const planConfigSchema = new mongoose.Schema({
     analytics: { type: Boolean, default: false },
     homeCollections: { type: Boolean, default: false },
     samples: { type: Boolean, default: false },
-    publicBooking: { type: Boolean, default: false }
+    publicBooking: { type: Boolean, default: false },
+    expenses: { type: Boolean, default: false },
+    tasks: { type: Boolean, default: false },
+    outsourced: { type: Boolean, default: false }
   },
   limits: {
     type: mongoose.Schema.Types.Mixed,

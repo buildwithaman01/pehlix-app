@@ -23,6 +23,9 @@ import {
   Bell,
   FlaskConical,
   TestTubes,
+  CheckSquare,
+  Wallet,
+  Send,
   Plus,
   Truck,
   Syringe,
@@ -46,11 +49,14 @@ const NAV_ITEMS = [
   { name: 'Patients', href: '/patients', icon: Users },
   { name: 'Tests', href: '/tests', icon: TestTubes },
   { name: 'Samples', href: '/samples', icon: Syringe },
+  { name: 'Outsourced Tests', href: '/outsourced', icon: Send },
   { name: 'Results', href: '/results', icon: FlaskConical },
   { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'Billing', href: '/billing', icon: CreditCard },
+  { name: 'Expenses', href: '/expenses', icon: Wallet },
   { name: 'Referral Network', href: '/doctors', icon: UserSquare2 },
   { name: 'Inventory', href: '/inventory', icon: Package },
+  { name: 'Tasks', href: '/tasks', icon: CheckSquare },
   { name: 'Staff', href: '/staff', icon: ShieldAlert },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Settings', href: '/settings', icon: Settings },
@@ -169,11 +175,14 @@ export default function LabLayout({ children }) {
       case 'Patients': return labModules.patients !== false;
       case 'Tests': return true;
       case 'Samples': return labModules.samples !== false;
+      case 'Outsourced Tests': return labModules.outsourced !== false;
       case 'Results': return labModules.results !== false;
       case 'Reports': return labModules.reports !== false;
       case 'Billing': return labModules.billing !== false;
+      case 'Expenses': return labModules.expenses !== false;
       case 'Inventory': return labModules.inventory !== false;
       case 'Referral Network': return labModules.doctors !== false;
+      case 'Tasks': return labModules.tasks !== false;
       case 'Staff': return labModules.staff !== false;
       case 'Analytics': return labModules.analytics !== false;
       default: return true;
