@@ -98,9 +98,12 @@ export default function OnlineBookingsPage() {
                       </h3>
                       {getStatusBadge(booking.status)}
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-neutral-500">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-neutral-500 mt-1.5">
                       <span className="flex items-center gap-1 font-mono text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-md">
                         {booking.visitCode}
+                      </span>
+                      <span className="flex items-center gap-1 font-medium text-neutral-700">
+                        {booking.patientId?.phone}
                       </span>
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5" />
@@ -121,16 +124,25 @@ export default function OnlineBookingsPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col lg:items-end gap-2 shrink-0">
-                  <div className="flex flex-col items-end">
+                <div className="flex flex-col lg:items-end gap-2 shrink-0 mt-4 lg:mt-0">
+                  <div className="flex flex-col items-end mb-2">
                     <span className="text-xs text-neutral-500">Total Amount</span>
                     <span className="font-bold text-neutral-900">₹{booking.invoiceId?.totalAmount || 0}</span>
                   </div>
-                  <Link href={`/patients/${booking.patientId?._id}`}>
-                    <Button variant="outline" className="w-full lg:w-auto h-9 text-xs rounded-xl gap-2 font-semibold">
-                      View Patient <ArrowRight className="w-3.5 h-3.5" />
-                    </Button>
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    {booking.visitType === 'homeCollection' && (
+                      <Link href="/home-collections">
+                        <Button variant="default" className="w-full lg:w-auto h-9 text-xs rounded-xl gap-2 font-semibold bg-purple-600 hover:bg-purple-700 text-white border-0">
+                          <Truck className="w-3.5 h-3.5" /> Assign & View Address
+                        </Button>
+                      </Link>
+                    )}
+                    <Link href={`/patients/${booking.patientId?._id}`}>
+                      <Button variant="outline" className="w-full lg:w-auto h-9 text-xs rounded-xl gap-2 font-semibold">
+                        View Patient <ArrowRight className="w-3.5 h-3.5" />
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}
