@@ -67,7 +67,7 @@ class PublicService {
     const visitData = {
       patientId: patient._id,
       tests: tests.map(t => t.testId),
-      isWalkIn: collectionType === 'walk_in',
+      visitType: collectionType === 'walk_in' ? 'walkIn' : 'homeCollection',
       source: 'public_booking',
       notes: `Public booking via portal. Type: ${collectionType}`
     };

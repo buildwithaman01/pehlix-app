@@ -68,7 +68,8 @@ export const VisitService = {
       notes,
       scheduledDate,
       paymentMethod = 'cash',
-      amountPaid = 0
+      amountPaid = 0,
+      source = 'reception'
     } = data;
 
     // Create visit record
@@ -82,6 +83,7 @@ export const VisitService = {
       labId,
       visitCode,
       registeredBy: createdBy,
+      source,
       status: 'registered',
       statusTimestamps: {
         registeredAt: new Date()

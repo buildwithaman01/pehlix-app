@@ -51,6 +51,11 @@ const visitSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  source: {
+    type: String,
+    enum: ['reception', 'public_booking', 'doctor_app'],
+    default: 'reception'
+  },
   notes: {
     type: String,
     trim: true
