@@ -25,11 +25,13 @@ import {
   TestTubes,
   Plus,
   Truck,
-  Syringe
+  Syringe,
+  Globe
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Online Bookings', href: '/bookings', icon: Globe },
   { name: 'Home Collections', href: '/home-collections', icon: Truck },
   { name: 'Patients', href: '/patients', icon: Users },
   { name: 'Tests', href: '/tests', icon: TestTubes },
@@ -152,6 +154,7 @@ export default function LabLayout({ children }) {
   const labModules = user?.labId?.planConfig?.modules || {};
   navItems = navItems.filter(item => {
     switch (item.name) {
+      case 'Online Bookings': return labModules.publicBooking !== false;
       case 'Home Collections': return labModules.homeCollections !== false;
       case 'Patients': return labModules.patients !== false;
       case 'Tests': return true;

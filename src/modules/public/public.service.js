@@ -11,7 +11,7 @@ class PublicService {
    */
   async getLabBySlug(slug) {
     const lab = await Lab.findOne({ slug, isActive: true, isSuspended: false })
-      .select('name slug address phone logoUrl email planConfig.modules.homeCollections');
+      .select('name slug address phone logoUrl email planConfig.modules.homeCollections planConfig.modules.publicBooking');
       
     if (!lab) return null;
 

@@ -50,6 +50,7 @@ export const VisitController = {
     try {
       const labId = req.user.labId;
       const status = req.query.status;
+      const source = req.query.source;
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
       const cursor = req.query.cursor || null;
@@ -57,6 +58,9 @@ export const VisitController = {
       const filters = {};
       if (status) {
         filters.status = status;
+      }
+      if (source) {
+        filters.source = source;
       }
 
       const result = await VisitService.getVisits(labId, filters, page, limit, cursor);

@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import {
   Building2, Phone, Mail, MapPin, ShieldAlert, CreditCard,
   Image as ImageIcon, Loader2, Sparkles, Check, Key, Lock,
-  MessageCircle, AlertTriangle
+  MessageCircle, AlertTriangle, Globe, Copy
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -428,6 +428,49 @@ export default function SettingsPage() {
 
         {/* Credentials and subscription (Right side) */}
         <div className="space-y-6">
+          {/* Public Booking Portal Share Hub */}
+          {settingsData?.planConfig?.modules?.publicBooking && (
+            <Card className="rounded-3xl border-neutral-200 border-2 border-emerald-500/20 bg-emerald-50/10">
+              <CardHeader className="border-b border-emerald-100 pb-3">
+                <CardTitle className="text-lg font-bold text-[#1E1E1E] flex items-center gap-2">
+                  <Globe className="w-5 h-5 text-emerald-600" /> Public Portal
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 pt-4">
+                <p className="text-xs text-neutral-500 leading-relaxed mb-2">
+                  Share this link on your Google Business, WhatsApp status, or Facebook to let patients book tests online instantly.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <div className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-mono text-neutral-700 truncate select-all">
+                    app.pehlix.in/{settingsData.slug}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      className="flex-1 rounded-xl text-xs gap-1 h-9"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://app.pehlix.in/${settingsData.slug}`);
+                        toast.success('Link copied to clipboard!');
+                      }}
+                    >
+                      <Copy className="w-3.5 h-3.5" /> Copy Link
+                    </Button>
+                    <Button 
+                      type="button" 
+                      className="flex-1 rounded-xl text-xs bg-[#25D366] hover:bg-[#1DA851] text-white gap-1 h-9"
+                      onClick={() => {
+                        window.open(`https://wa.me/?text=Book%20lab%20tests%20online%20instantly%20with%20us!%20%0Ahttps://app.pehlix.in/${settingsData.slug}`, '_blank');
+                      }}
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Razorpay credentials */}
           <Card className="rounded-3xl border-neutral-200">
             <CardHeader className="border-b border-neutral-100">

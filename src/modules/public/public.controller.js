@@ -14,6 +14,10 @@ export const PublicController = {
         return sendError(res, 'LAB_NOT_FOUND', 'Lab not found or is currently suspended', {}, 404);
       }
 
+      if (!data.lab.planConfig?.modules?.publicBooking) {
+        return sendError(res, 'FEATURE_DISABLED', 'Online booking is currently not available for this lab', {}, 403);
+      }
+
       return sendSuccess(res, data, 'Lab details fetched successfully');
     } catch (error) {
       next(error);
@@ -29,6 +33,14 @@ export const PublicController = {
       
       if (!labId || !patientData || !patientData.phone || !tests || tests.length === 0) {
         return sendError(res, 'VALIDATION_FAILED', 'Missing required booking details', {}, 400);
+      }
+
+      const mongoose = (await import('mongoose')).default;
+      const Lab = mongoose.model('Lab');
+      const lab = await Lab.findById(labId).select('planConfig.modules.publicBooking');
+      
+      if (!lab || !lab.planConfig?.modules?.publicBooking) {
+        return sendError(res, 'FEATURE_DISABLED', 'Online booking is disabled for this lab', {}, 403);
       }
 
       // We bypass OTP in this MVP phase for frictionless UX

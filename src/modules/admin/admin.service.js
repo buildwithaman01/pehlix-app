@@ -116,7 +116,8 @@ export const AdminService = {
         inventory: false,
         homeCollections: false,
         analytics: false,
-        webhooks: false
+        webhooks: false,
+        publicBooking: false
       },
       limits: {
         staffCount: 3,
@@ -583,7 +584,7 @@ export const AdminService = {
     const modulesList = [
       'patients', 'visits', 'results', 'reports', 'billing', 'inventory',
       'doctors', 'staff', 'notifications', 'webhooks', 'analytics',
-      'homeCollections', 'samples'
+      'homeCollections', 'samples', 'publicBooking'
     ];
     const featureAdoption = {};
     for (const mod of modulesList) {

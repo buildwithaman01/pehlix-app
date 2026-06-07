@@ -22,7 +22,8 @@ const planConfigSchema = new mongoose.Schema({
     webhooks: { type: Boolean, default: false },
     analytics: { type: Boolean, default: false },
     homeCollections: { type: Boolean, default: false },
-    samples: { type: Boolean, default: false }
+    samples: { type: Boolean, default: false },
+    publicBooking: { type: Boolean, default: false }
   },
   limits: {
     type: mongoose.Schema.Types.Mixed,

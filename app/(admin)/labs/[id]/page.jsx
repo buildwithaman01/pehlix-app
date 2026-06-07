@@ -622,8 +622,9 @@ export default function LabDetailPage({ params: paramsPromise }) {
                         doctors: 'Referral Network (Doctors)',
                         notifications: 'In-App Notifications',
                         visits: 'Patient Visits (Nested)',
-                        homeCollections: 'Home Collections (UI Pending)',
-                        samples: 'Samples (UI Pending)',
+                        homeCollections: 'Home Collections',
+                        samples: 'Samples',
+                        publicBooking: 'Public Booking Portal',
                         webhooks: 'Webhooks & API Access'
                       };
                       if (map[key]) return map[key];
