@@ -95,7 +95,16 @@ export default function LabDetailPage({ params: paramsPromise }) {
     queryFn: () => adminApi.getLabById(id)
   });
 
+  // Helpers
+  function formatDateForInput(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    return date.toISOString().split('T')[0];
+  }
+
   // React Query v5 compatible useEffect hook for form state initialization
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (lab) {
       setBillingForm({
@@ -135,14 +144,6 @@ export default function LabDetailPage({ params: paramsPromise }) {
     queryFn: () => adminApi.getAuditLogs(id, { page: auditPage, limit: 10 }),
     enabled: !!lab
   });
-
-  // Helpers
-  function formatDateForInput(dateStr) {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return '';
-    return date.toISOString().split('T')[0];
-  }
 
   function formatDateTime(dateStr) {
     if (!dateStr) return 'N/A';
@@ -615,23 +616,37 @@ export default function LabDetailPage({ params: paramsPromise }) {
                 </h3>
                 <p className="text-xs text-neutral-500 mt-0.5 mb-4">Toggle root capability modules for the tenant portal.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {Object.keys(modulesForm).map((modKey) => (
-                    <div 
-                      key={modKey} 
-                      className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50/50 transition-colors"
-                    >
-                      <div className="space-y-0.5">
-                        <span className="text-sm font-semibold capitalize text-[#1E1E1E]">{modKey.replace(/([A-Z])/g, ' $1')}</span>
-                        <span className="text-[10px] text-neutral-400 block">Access to {modKey.replace(/([A-Z])/g, ' $1').toLowerCase()}</span>
-                      </div>
-                      <input 
+                  {Object.keys(modulesForm).map((modKey) => {
+                    const getModuleLabel = (key) => {
+                      const map = {
+                        doctors: 'Referral Network (Doctors)',
+                        notifications: 'In-App Notifications',
+                        visits: 'Patient Visits (Nested)',
+                        homeCollections: 'Home Collections (UI Pending)',
+                        samples: 'Samples (UI Pending)',
+                        webhooks: 'Webhooks & API Access'
+                      };
+                      if (map[key]) return map[key];
+                      return key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    };
+                    return (
+                      <div 
+                        key={modKey} 
+                        className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50/50 transition-colors"
+                      >
+                        <div className="space-y-0.5">
+                          <span className="text-sm font-semibold text-[#1E1E1E]">{getModuleLabel(modKey)}</span>
+                          <span className="text-[10px] text-neutral-400 block">Access to {modKey.replace(/([A-Z])/g, ' $1').toLowerCase()}</span>
+                        </div>
+                        <input 
                         type="checkbox"
                         checked={!!modulesForm[modKey]}
                         onChange={(e) => handleModuleToggle(modKey, e.target.checked)}
                         className="w-4 h-4 rounded text-emerald-deep border-neutral-300 focus:ring-emerald-deep accent-emerald-600"
                       />
                     </div>
-                  ))}
+                  );
+                })}
                 </div>
               </div>
               

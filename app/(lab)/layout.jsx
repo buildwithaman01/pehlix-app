@@ -23,13 +23,17 @@ import {
   Bell,
   FlaskConical,
   TestTubes,
-  Plus
+  Plus,
+  Truck,
+  Syringe
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Home Collections', href: '/home-collections', icon: Truck },
   { name: 'Patients', href: '/patients', icon: Users },
   { name: 'Tests', href: '/tests', icon: TestTubes },
+  { name: 'Samples', href: '/samples', icon: Syringe },
   { name: 'Results', href: '/results', icon: FlaskConical },
   { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'Billing', href: '/billing', icon: CreditCard },
@@ -142,7 +146,27 @@ export default function LabLayout({ children }) {
   }
 
   // Construct dynamic nav items with badge counts
-  const navItems = [...NAV_ITEMS];
+  let navItems = [...NAV_ITEMS];
+
+  // Apply module gating based on lab.planConfig.modules
+  const labModules = user?.labId?.planConfig?.modules || {};
+  navItems = navItems.filter(item => {
+    switch (item.name) {
+      case 'Home Collections': return labModules.homeCollections !== false;
+      case 'Patients': return labModules.patients !== false;
+      case 'Tests': return true;
+      case 'Samples': return labModules.samples !== false;
+      case 'Results': return labModules.results !== false;
+      case 'Reports': return labModules.reports !== false;
+      case 'Billing': return labModules.billing !== false;
+      case 'Inventory': return labModules.inventory !== false;
+      case 'Referral Network': return labModules.doctors !== false;
+      case 'Staff': return labModules.staff !== false;
+      case 'Analytics': return labModules.analytics !== false;
+      default: return true;
+    }
+  });
+
   if (user && user.roles?.some(r => ['owner', 'receptionist'].includes(r))) {
     const settingsIndex = navItems.findIndex(item => item.href === '/settings');
     if (settingsIndex !== -1) {

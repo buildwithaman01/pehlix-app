@@ -170,7 +170,7 @@ const AuthService = {
     try {
       const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] });
       
-      const user = await User.findById(decoded.userId);
+      const user = await User.findById(decoded.userId).populate('labId', 'name planConfig');
       if (!user || user.isSuspended || !user.isActive) {
         throw new AppError('User not found or suspended.', 'AUTH_TOKEN_INVALID', 401);
       }

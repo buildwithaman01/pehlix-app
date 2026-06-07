@@ -13,7 +13,8 @@ import {
   Menu,
   X,
   Lock,
-  ArrowLeft
+  ArrowLeft,
+  ShieldAlert
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PehlixLogo from '@/components/shared/PehlixLogo';
@@ -23,6 +24,7 @@ const ADMIN_NAV_ITEMS = [
   { name: 'Platform Metrics', href: '/platform', icon: BarChart3 },
   { name: 'Feature Flags', href: '/flags', icon: Flag },
   { name: 'Announcements', href: '/announcements', icon: Volume2 },
+  { name: 'Security & Logs', href: '/security', icon: ShieldAlert },
 ];
 
 export default function AdminLayout({ children }) {

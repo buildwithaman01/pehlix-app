@@ -21,9 +21,9 @@ const AuthController = {
 
       let user = null;
       if (phone) {
-        user = await User.findOne({ phone });
+        user = await User.findOne({ phone }).populate('labId', 'name planConfig');
       } else if (email) {
-        user = await User.findOne({ email });
+        user = await User.findOne({ email }).populate('labId', 'name planConfig');
       }
 
       let patientRecord = null;
@@ -149,9 +149,9 @@ const AuthController = {
 
       let user = null;
       if (phone) {
-        user = await User.findOne({ phone });
+        user = await User.findOne({ phone }).populate('labId', 'name planConfig');
       } else if (email) {
-        user = await User.findOne({ email });
+        user = await User.findOne({ email }).populate('labId', 'name planConfig');
       }
       
       if (user) {
@@ -235,7 +235,7 @@ const AuthController = {
     try {
       const { email, password } = req.body;
 
-      const user = await User.findOne({ email });
+      const user = await User.findOne({ email }).populate('labId', 'name planConfig');
       if (!user || !user.passwordHash) {
         return sendError(res, 'AUTH_TOKEN_INVALID', 'Invalid email or password', {}, 401);
       }

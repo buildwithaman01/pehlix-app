@@ -510,7 +510,21 @@ export const AdminService = {
    * Get overall platform metrics
    */
   async getPlatformMetrics() {
-    const allLabs = await Lab.find().lean();
+    // Optimization: Only fetch the fields needed for calculation
+    const allLabs = await Lab.find({}, { 
+      'billing.status': 1, 
+      'billing.amount': 1,
+      isSuspended: 1, 
+      plan: 1, 
+      createdAt: 1, 
+      suspendedAt: 1, 
+      updatedAt: 1, 
+      healthScore: 1, 
+      'address.city': 1, 
+      'planConfig.modules': 1,
+      name: 1
+    }).lean();
+
     const totalLabs = allLabs.length;
     const activeLabs = allLabs.filter(l => l.billing?.status === 'active').length;
     const trialLabs = allLabs.filter(l => l.billing?.status === 'trial').length;
@@ -526,7 +540,9 @@ export const AdminService = {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     for (const lab of allLabs) {
-      const planPrice = planPrices[lab.plan] || 0;
+      // Dynamic pricing fallback to legacy hardcoded values
+      const planPrice = lab.billing?.amount ?? (planPrices[lab.plan] || 0);
+      
       if (lab.billing?.status === 'active') {
         currentMrr += planPrice;
         if (new Date(lab.createdAt) >= startOfMonth) {
@@ -608,7 +624,15 @@ export const AdminService = {
    * Get expected subscription MRR time series
    */
   async getPlatformRevenue(period) {
-    const allLabs = await Lab.find().lean();
+    // Optimization: Fetch only needed fields to prevent memory saturation
+    const allLabs = await Lab.find({}, { 
+      'billing.status': 1, 
+      'billing.amount': 1,
+      createdAt: 1, 
+      suspendedAt: 1, 
+      plan: 1 
+    }).lean();
+    
     const planPrices = { starter: 999, growth: 2499, pro: 4999, custom: 0 };
 
     const now = new Date();
@@ -633,7 +657,8 @@ export const AdminService = {
           const isCurrentlyActive = lab.billing?.status === 'active';
           const wasSuspendedAfter = lab.suspendedAt ? new Date(lab.suspendedAt) > monthEnd : true;
           if (isCurrentlyActive && wasSuspendedAfter) {
-            mrr += planPrices[lab.plan] || 0;
+            const planPrice = lab.billing?.amount ?? (planPrices[lab.plan] || 0);
+            mrr += planPrice;
           }
         }
       }

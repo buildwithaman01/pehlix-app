@@ -18,34 +18,34 @@ router.use(verifyTenant);
 
 router.post(
   '/scan',
-  authorize('owner', 'technician', 'pathologist'),
+  authorize('owner', 'technician', 'pathologist', 'receptionist'),
   validateRequest(scanBarcodeSchema),
   SampleController.scanBarcode
 );
 
 router.put(
   '/:id/status',
-  authorize('owner', 'technician'),
+  authorize('owner', 'technician', 'receptionist'),
   validateRequest(updateSampleStatusSchema),
   SampleController.updateSampleStatus
 );
 
 router.post(
   '/:id/reject',
-  authorize('owner', 'technician'),
+  authorize('owner', 'technician', 'receptionist'),
   validateRequest(rejectSampleSchema),
   SampleController.rejectSample
 );
 
 router.get(
   '/pending',
-  authorize('owner', 'technician', 'pathologist'),
+  authorize('owner', 'technician', 'pathologist', 'receptionist'),
   SampleController.getPendingSamples
 );
 
 router.get(
   '/:id/chain',
-  authorize('owner', 'technician', 'pathologist'),
+  authorize('owner', 'technician', 'pathologist', 'receptionist'),
   SampleController.getSampleChain
 );
 
