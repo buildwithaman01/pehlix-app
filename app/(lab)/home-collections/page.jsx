@@ -166,7 +166,8 @@ export default function HomeCollectionsPage() {
     onError: (err) => toast.error('Failed to update status')
   });
 
-  const filteredCollections = collections?.filter(c => {
+  const collectionsList = collections?.collections || [];
+  const filteredCollections = collectionsList.filter(c => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (
