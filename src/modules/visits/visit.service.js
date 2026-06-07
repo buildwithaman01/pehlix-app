@@ -3,6 +3,8 @@ import Visit from './visit.model.js';
 import Invoice from '../billing/invoice.model.js';
 import LabTest from '../staff/labTest.model.js';
 import Payment from '../billing/payment.model.js';
+import Sample from '../samples/sample.model.js';
+import Result from '../results/result.model.js';
 import DoctorService from '../doctors/doctor.service.js';
 import { AppError } from '../../utils/errors.js';
 
@@ -92,8 +94,8 @@ export const VisitService = {
 
     await visit.save();
 
-    // Fetch prices from LabTest collection
-    const labTests = await LabTest.find({ labId, _id: { $in: tests } });
+    // Fetch prices from LabTest collection and populate testId for Sample/Result generation
+    const labTests = await LabTest.find({ labId, _id: { $in: tests } }).populate('testId');
     if (labTests.length !== tests.length) {
       throw new AppError('Some selected tests are invalid or not found for this lab', 'TEST_NOT_FOUND', 404);
     }
@@ -114,6 +116,81 @@ export const VisitService = {
         finalPrice: lt.price
       };
     });
+
+    // --- SAMPLE & RESULT GENERATION LOGIC ---
+    const sampleGroups = {}; // key: containerType_sampleType
+    
+    for (const testIdStr of tests) {
+      const lt = testsMap[testIdStr];
+      const tm = lt.testId; // Populated TestMaster
+      const containerType = tm?.container || 'Unknown Container';
+      const sampleType = tm?.sampleType || 'Unknown Sample Type';
+      const groupKey = `${containerType}_${sampleType}`;
+
+      if (!sampleGroups[groupKey]) {
+        sampleGroups[groupKey] = {
+          containerType,
+          sampleType,
+          tests: []
+        };
+      }
+      sampleGroups[groupKey].tests.push(lt);
+    }
+
+    const createdSamples = [];
+    const createdResults = [];
+    let sampleIndex = 1;
+
+    for (const key in sampleGroups) {
+      const group = sampleGroups[key];
+      const barcodeId = `${visitCode}-${String(sampleIndex).padStart(2, '0')}`;
+      
+      const sample = new Sample({
+        labId,
+        barcodeId,
+        visitId: visit._id,
+        patientId,
+        sampleType: group.sampleType,
+        containerType: group.containerType,
+        status: 'pending',
+        chainOfCustody: [{
+          action: 'Sample registration required',
+          performedBy: createdBy,
+          timestamp: new Date(),
+          notes: 'Auto-generated during visit creation'
+        }]
+      });
+      await sample.save();
+      createdSamples.push(sample._id);
+      sampleIndex++;
+
+      // Create Result documents for each test in this sample group
+      for (const lt of group.tests) {
+        const tm = lt.testId;
+        const parameters = (tm?.parameters || []).map(p => ({
+          parameterName: p.name,
+          unit: p.unit,
+          status: 'normal',
+          isFlagged: false
+        }));
+
+        const resultDoc = new Result({
+          labId,
+          visitId: visit._id,
+          sampleId: sample._id,
+          testId: tm._id, // testMaster ID
+          parameters,
+          isApproved: false,
+          isDeleted: false
+        });
+        await resultDoc.save();
+        createdResults.push(resultDoc._id);
+      }
+    }
+
+    visit.sampleIds = createdSamples;
+    visit.resultIds = createdResults;
+    // -----------------------------------------
 
     // Calculate billing amounts
     const subtotal = lineItems.reduce((sum, item) => sum + item.finalPrice, 0);
@@ -364,8 +441,8 @@ export const VisitService = {
       });
     }
 
-    // Fetch details for all tests in the visit
-    const labTests = await LabTest.find({ labId, _id: { $in: visit.tests } });
+    // Fetch details for all tests in the visit, including populated testId
+    const labTests = await LabTest.find({ labId, _id: { $in: visit.tests } }).populate('testId');
     const testsMap = labTests.reduce((acc, lt) => {
       acc[lt._id.toString()] = lt;
       return acc;
@@ -384,6 +461,99 @@ export const VisitService = {
         finalPrice: lt.price
       };
     });
+
+    // --- SAMPLE & RESULT GENERATION FOR NEW TESTS ---
+    const newLabTests = newTestsFiltered.map(id => testsMap[id.toString()]);
+    const sampleGroups = {}; // key: containerType_sampleType
+    
+    for (const lt of newLabTests) {
+      const tm = lt.testId; // Populated TestMaster
+      const containerType = tm?.container || 'Unknown Container';
+      const sampleType = tm?.sampleType || 'Unknown Sample Type';
+      const groupKey = `${containerType}_${sampleType}`;
+
+      if (!sampleGroups[groupKey]) {
+        sampleGroups[groupKey] = {
+          containerType,
+          sampleType,
+          tests: []
+        };
+      }
+      sampleGroups[groupKey].tests.push(lt);
+    }
+
+    const createdSamples = visit.sampleIds ? [...visit.sampleIds] : [];
+    const createdResults = visit.resultIds ? [...visit.resultIds] : [];
+    
+    // Find existing highest sample index to avoid barcode collisions
+    const existingSamples = await Sample.find({ visitId: visit._id });
+    let maxIndex = 0;
+    existingSamples.forEach(s => {
+      if (s.barcodeId && s.barcodeId.startsWith(visit.visitCode + '-')) {
+        const parts = s.barcodeId.split('-');
+        const idx = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(idx) && idx > maxIndex) {
+          maxIndex = idx;
+        }
+      }
+    });
+    let sampleIndex = maxIndex + 1;
+
+    for (const key in sampleGroups) {
+      const group = sampleGroups[key];
+      
+      // Check if we already have a sample of this exact container & type for this visit
+      let sample = existingSamples.find(s => s.containerType === group.containerType && s.sampleType === group.sampleType);
+      
+      if (!sample) {
+        const barcodeId = `${visit.visitCode}-${String(sampleIndex).padStart(2, '0')}`;
+        sample = new Sample({
+          labId,
+          barcodeId,
+          visitId: visit._id,
+          patientId: visit.patientId,
+          sampleType: group.sampleType,
+          containerType: group.containerType,
+          status: 'pending',
+          chainOfCustody: [{
+            action: 'Sample registration required',
+            performedBy: updatedBy,
+            timestamp: new Date(),
+            notes: 'Auto-generated during add tests'
+          }]
+        });
+        await sample.save();
+        createdSamples.push(sample._id);
+        sampleIndex++;
+      }
+
+      // Create Result documents for each new test in this sample group
+      for (const lt of group.tests) {
+        const tm = lt.testId;
+        const parameters = (tm?.parameters || []).map(p => ({
+          parameterName: p.name,
+          unit: p.unit,
+          status: 'normal',
+          isFlagged: false
+        }));
+
+        const resultDoc = new Result({
+          labId,
+          visitId: visit._id,
+          sampleId: sample._id,
+          testId: tm._id, // testMaster ID
+          parameters,
+          isApproved: false,
+          isDeleted: false
+        });
+        await resultDoc.save();
+        createdResults.push(resultDoc._id);
+      }
+    }
+
+    visit.sampleIds = createdSamples;
+    visit.resultIds = createdResults;
+    // ------------------------------------------------
 
     const subtotal = lineItems.reduce((sum, item) => sum + item.finalPrice, 0);
     const gstRate = 18;

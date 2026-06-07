@@ -17,21 +17,7 @@ import { Search, UserPlus, Users, Phone, ChevronRight, Calendar, FlaskConical } 
 import { doctorsApi } from '@/lib/api/extended.api';
 import CreatableSelect from 'react-select/creatable';
 
-function useDebounce(value, delay = 350) {
-  const [debounced, setDebounced] = useState(value);
-  const timerRef = useCallback(() => {}, []);
-  useState(() => {
-    const t = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(t);
-  }, [value, delay]);
-  // Simple implementation using effect-like pattern
-  const [debouncedVal, setDebouncedVal] = useState(value);
-  useState(() => {
-    const t = setTimeout(() => setDebouncedVal(value), delay);
-    return () => clearTimeout(t);
-  });
-  return debouncedVal;
-}
+// Not using useDebounce here, removed invalid implementation.
 
 const GENDERS = ['male', 'female', 'other'];
 const AGE_UNITS = ['years', 'months', 'days'];
