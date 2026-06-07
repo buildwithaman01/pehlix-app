@@ -69,6 +69,7 @@ class PublicService {
       tests: tests.map(t => t.testId),
       visitType: collectionType === 'walk_in' ? 'walkIn' : 'homeCollection',
       source: 'public_booking',
+      paymentMethod: 'credit',
       notes: `Public booking via portal. Type: ${collectionType}`
     };
 
