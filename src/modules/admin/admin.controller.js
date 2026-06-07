@@ -105,6 +105,15 @@ export const AdminController = {
         return sendError(res, 'VALIDATION_FAILED', 'Impersonation reason is required', {}, 400);
       }
       const result = await AdminService.createImpersonationToken(req.params.id, userId, req.user.userId, reason);
+      
+      // Setting cookie so it survives page reloads
+      res.cookie('pehlix_token', result.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 30 * 60 * 1000 // 30 minutes
+      });
+
       return sendSuccess(res, result, 'Impersonation token generated successfully');
     } catch (error) {
       next(error);

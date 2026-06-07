@@ -613,7 +613,11 @@ export default function LabDetailPage({ params: paramsPromise }) {
                 </h3>
                 <p className="text-xs text-neutral-500 mt-0.5 mb-4">Toggle root capability modules for the tenant portal.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {Object.keys(modulesForm).map((modKey) => {
+                  {[
+                    'patients', 'visits', 'results', 'reports', 'billing', 'inventory',
+                    'doctors', 'staff', 'notifications', 'webhooks', 'analytics',
+                    'homeCollections', 'samples', 'publicBooking', 'expenses', 'tasks', 'outsourced'
+                  ].map((modKey) => {
                     const getModuleLabel = (key) => {
                       const map = {
                         doctors: 'Referral Network (Doctors)',
@@ -622,7 +626,10 @@ export default function LabDetailPage({ params: paramsPromise }) {
                         homeCollections: 'Home Collections',
                         samples: 'Samples',
                         publicBooking: 'Public Booking Portal',
-                        webhooks: 'Webhooks & API Access'
+                        webhooks: 'Webhooks & API Access',
+                        outsourced: 'Outsourced Tests',
+                        expenses: 'Expenses',
+                        tasks: 'Tasks'
                       };
                       if (map[key]) return map[key];
                       return key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
@@ -637,14 +644,14 @@ export default function LabDetailPage({ params: paramsPromise }) {
                           <span className="text-[10px] text-neutral-400 block">Access to {modKey.replace(/([A-Z])/g, ' $1').toLowerCase()}</span>
                         </div>
                         <input 
-                        type="checkbox"
-                        checked={!!modulesForm[modKey]}
-                        onChange={(e) => handleModuleToggle(modKey, e.target.checked)}
-                        className="w-4 h-4 rounded text-emerald-deep border-neutral-300 focus:ring-emerald-deep accent-emerald-600"
-                      />
-                    </div>
-                  );
-                })}
+                          type="checkbox"
+                          checked={!!modulesForm[modKey]}
+                          onChange={(e) => handleModuleToggle(modKey, e.target.checked)}
+                          className="w-4 h-4 rounded text-emerald-deep border-neutral-300 focus:ring-emerald-deep accent-emerald-600"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               
