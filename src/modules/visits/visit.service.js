@@ -219,6 +219,9 @@ export const VisitService = {
     if (filters.status) {
       query.status = filters.status;
     }
+    if (filters.source) {
+      query.source = filters.source;
+    }
 
     let visits;
     let hasNextPage = false;
