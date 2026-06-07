@@ -26,6 +26,26 @@ export default function Providers({ children }) {
 
   useEffect(() => {
     async function restoreSession() {
+      // 1. Check for active impersonation session
+      try {
+        const impData = sessionStorage.getItem('pehlix_impersonation');
+        if (impData) {
+          const { user, accessToken } = JSON.parse(impData);
+          const payload = JSON.parse(atob(accessToken.split('.')[1]));
+          // Check if token is still valid
+          if (payload.exp * 1000 > Date.now()) {
+            setUser(user, accessToken);
+            setInitialized(true);
+            return;
+          } else {
+            sessionStorage.removeItem('pehlix_impersonation');
+          }
+        }
+      } catch (e) {
+        sessionStorage.removeItem('pehlix_impersonation');
+      }
+
+      // 2. Fall back to standard refresh token flow
       try {
         const res = await apiClient.post('/auth/refresh');
         const { accessToken, user } = res.data.data;

@@ -183,6 +183,11 @@ export default function LabDetailPage({ params: paramsPromise }) {
     onSuccess: (data) => {
       toast.success(`Impersonating ${data.user.name} as ${data.user.roles.join(', ')}`);
       
+      sessionStorage.setItem('pehlix_impersonation', JSON.stringify({
+        user: { ...data.user, isImpersonated: true, impersonationReason: impersonateReason },
+        accessToken: data.accessToken
+      }));
+
       // Update global auth store with impersonated user information and access token
       setUser({
         ...data.user,

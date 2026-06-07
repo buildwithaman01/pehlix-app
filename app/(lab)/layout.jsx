@@ -356,11 +356,25 @@ export default function LabLayout({ children }) {
                     <span>Lab Settings</span>
                   </Link>
                 </DropdownMenuItem>
+
+                {user?.isImpersonated && (
+                  <DropdownMenuItem 
+                    className="cursor-pointer text-amber-600 focus:bg-amber-50 focus:text-amber-700 mt-1"
+                    onClick={() => {
+                      sessionStorage.removeItem('pehlix_impersonation');
+                      window.location.href = '/platform';
+                    }}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    <span>Stop Impersonating</span>
+                  </DropdownMenuItem>
+                )}
                 
                 <DropdownMenuItem 
                   className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700 mt-1"
                   onClick={() => {
                     useAuthStore.getState().clearUser();
+                    sessionStorage.removeItem('pehlix_impersonation');
                     router.push('/login');
                   }}
                 >
