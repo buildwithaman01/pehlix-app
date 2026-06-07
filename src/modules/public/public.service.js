@@ -41,15 +41,20 @@ class PublicService {
     // 1. Find or create patient
     let patient = await Patient.findOne({ labId, phone: patientData.phone });
     if (!patient) {
+      const genderMap = { 'M': 'male', 'F': 'female', 'O': 'other', 'male': 'male', 'female': 'female', 'other': 'other' };
+      const mappedGender = patientData.gender ? (genderMap[patientData.gender] || patientData.gender.toLowerCase()) : 'other';
+      
       patient = new Patient({
         labId,
         firstName: patientData.firstName,
         lastName: patientData.lastName || '',
         phone: patientData.phone,
         age: patientData.age,
-        gender: patientData.gender,
+        gender: mappedGender,
         patientCode: `PID${Date.now().toString().slice(-6)}`
       });
+      // Fallback if schema complains
+      patient.patientCode = patient.patientCode || `PID${Date.now().toString().slice(-6)}`;
       await patient.save();
     }
 

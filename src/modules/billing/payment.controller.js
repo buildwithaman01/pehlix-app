@@ -56,7 +56,7 @@ export const PaymentController = {
 
       const payment = await Payment.findOne({ _id: id, labId });
       if (!payment) {
-        const AppError = (await import('../../utils/AppError.js')).default;
+        const { AppError } = await import('../../utils/errors.js');
         throw new AppError('Payment not found', 'PAYMENT_NOT_FOUND', 404);
       }
 

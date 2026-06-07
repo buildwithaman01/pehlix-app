@@ -434,12 +434,19 @@ export const AdminService = {
     const labName = lab ? lab.name : 'Unknown Lab';
 
     return {
-      token,
+      accessToken: token,
       expiresAt,
-      targetUser: {
-        name: targetUser.name,
+      user: {
+        _id: targetUser._id,
+        name: targetUser.name || `${targetUser.firstName} ${targetUser.lastName}`.trim(),
+        firstName: targetUser.firstName,
+        lastName: targetUser.lastName,
+        email: targetUser.email,
         role: targetUser.role,
-        labName
+        roles: targetUser.roles || [targetUser.role],
+        labId: labId.toString(),
+        labName,
+        planConfig: lab?.planConfig || {}
       }
     };
   },
