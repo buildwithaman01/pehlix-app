@@ -136,7 +136,6 @@ import whatsappOutboxRouter from './modules/whatsappOutbox/whatsappOutbox.routes
 import resultAuditRouter from './modules/results/resultAudit.routes.js';
 import notificationRouter from './modules/notifications/notification.routes.js';
 import publicRouter from './modules/public/public.routes.js';
-import internalRouter from './modules/public/internal.routes.js';
 import expenseRouter from './modules/expenses/expense.routes.js';
 import taskRouter from './modules/tasks/task.routes.js';
 import outsourcedRouter from './modules/outsourced/outsourcedOrder.routes.js';
