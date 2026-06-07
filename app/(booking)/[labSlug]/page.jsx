@@ -71,8 +71,8 @@ export default function PublicBookingPage() {
   // Filter Catalog
   const allItems = [...(catalog.tests || []), ...(catalog.packages || [])];
   const searchResults = allItems.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (item.code && item.code.toLowerCase().includes(searchQuery.toLowerCase()))
+    item?.name?.toLowerCase()?.includes(searchQuery.toLowerCase()) || 
+    (item?.code && item?.code?.toLowerCase()?.includes(searchQuery.toLowerCase()))
   ).slice(0, 5); // show top 5 results
 
   const addToCart = (item) => {
