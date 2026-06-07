@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { homeCollectionsApi } from '@/lib/api/homeCollections.api';
 import { staffApi } from '@/lib/api/extended.api';
@@ -157,6 +158,8 @@ export default function HomeCollectionsPage() {
     queryFn: staffApi.getStaff
   });
 
+  const phlebotomists = staff?.filter(s => s.roles?.includes('phlebotomist')) || [];
+
   const { mutate: updateStatus } = useMutation({
     mutationFn: ({ id, status }) => homeCollectionsApi.updateStatus(id, { status }),
     onSuccess: () => {
@@ -164,6 +167,17 @@ export default function HomeCollectionsPage() {
       qc.invalidateQueries(['homeCollections']);
     },
     onError: (err) => toast.error('Failed to update status')
+  });
+
+  const { mutate: assignPhlebotomist } = useMutation({
+    mutationFn: ({ id, phlebotomistId }) => homeCollectionsApi.assignPhlebotomist(id, phlebotomistId),
+    onSuccess: () => {
+      toast.success('Phlebotomist assigned successfully');
+      qc.invalidateQueries(['homeCollections']);
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || 'Failed to assign phlebotomist');
+    }
   });
 
   const collectionsList = collections?.collections || [];
@@ -231,9 +245,9 @@ export default function HomeCollectionsPage() {
                 {filteredCollections.map(collection => (
                   <tr key={collection._id} className="hover:bg-neutral-50/50 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="font-medium text-neutral-900">
+                      <Link href={`/patients/${collection.patientId?._id}`} className="font-medium text-neutral-900 hover:text-emerald-600 hover:underline">
                         {collection.patientId?.firstName} {collection.patientId?.lastName}
-                      </div>
+                      </Link>
                       <div className="text-xs text-neutral-500 mt-0.5">{collection.patientId?.phone}</div>
                     </td>
                     <td className="px-6 py-4">
@@ -246,17 +260,31 @@ export default function HomeCollectionsPage() {
                         {collection.timeSlot}
                       </div>
                     </td>
-                    <td className="px-6 py-4 max-w-[200px] truncate text-neutral-600">
-                      <div className="flex items-center">
-                        <MapPin className="w-3.5 h-3.5 mr-1.5 text-neutral-400 shrink-0" />
-                        <span className="truncate">{collection.address?.street}, {collection.address?.city}</span>
+                    <td className="px-6 py-4 max-w-[200px] text-neutral-600">
+                      <div className="flex items-start">
+                        <MapPin className="w-3.5 h-3.5 mr-1.5 mt-0.5 text-neutral-400 shrink-0" />
+                        <span className="whitespace-normal break-words text-xs leading-relaxed">
+                          {collection.address?.street}, {collection.address?.city} {collection.address?.pincode ? `- ${collection.address?.pincode}` : ''}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-neutral-600">
-                      <div className="flex items-center">
-                        <User className="w-3.5 h-3.5 mr-1.5" />
-                        {collection.assignedPhlebotomist?.name || 'Unassigned'}
-                      </div>
+                      <Select 
+                        value={collection.assignedPhlebotomist?._id || ''} 
+                        onValueChange={(val) => assignPhlebotomist({ id: collection._id, phlebotomistId: val })}
+                      >
+                        <SelectTrigger className="w-[140px] h-8 text-xs border-0 bg-transparent hover:bg-neutral-50 shadow-none focus:ring-0">
+                          <div className="flex items-center">
+                            <User className="w-3.5 h-3.5 mr-1.5" />
+                            <span className="truncate">{collection.assignedPhlebotomist?.name || 'Unassigned'}</span>
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {phlebotomists.map(phleb => (
+                            <SelectItem key={phleb._id} value={phleb._id}>{phleb.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </td>
                     <td className="px-6 py-4">
                       <Badge variant="secondary" className={cn("capitalize border-0", STATUS_COLORS[collection.status])}>

@@ -45,6 +45,24 @@ export const HomeCollectionController = {
     }
   },
 
+  async assignPhlebotomist(req, res, next) {
+    try {
+      const { assignedPhlebotomist } = req.body;
+      const collection = await HomeCollectionService.assignPhlebotomist(
+        req.user.labId,
+        req.params.id,
+        assignedPhlebotomist,
+        req.user._id
+      );
+      return sendSuccess(res, 'Phlebotomist assigned successfully', { collection });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  /**
+   * Update home collection status and GPS data.
+   */
   async updateStatus(req, res, next) {
     try {
       const { status, gpsCoordinates, notes, cashCollected } = req.body;

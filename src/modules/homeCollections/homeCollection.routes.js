@@ -3,6 +3,7 @@ import HomeCollectionController from './homeCollection.controller.js';
 import {
   createHomeCollectionSchema,
   updateStatusSchema,
+  assignPhlebotomistSchema,
   offlineSyncSchema,
   validateRequest
 } from './homeCollection.validation.js';
@@ -32,6 +33,9 @@ router.post('/sync', authorize('phlebotomist'), requireModule('homeCollections')
 
 // Update home collection status
 router.put('/:id/status', authorize('phlebotomist', 'owner'), requireModule('homeCollections'), validateRequest(updateStatusSchema), HomeCollectionController.updateStatus);
+
+// Assign phlebotomist
+router.put('/:id/assign', authorize('owner', 'receptionist'), requireModule('homeCollections'), validateRequest(assignPhlebotomistSchema), HomeCollectionController.assignPhlebotomist);
 
 // Force collected status (alternative endpoint)
 router.post('/:id/collect', authorize('phlebotomist', 'owner'), requireModule('homeCollections'), (req, res, next) => {

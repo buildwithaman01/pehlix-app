@@ -114,6 +114,22 @@ export const HomeCollectionService = {
     return jobs;
   },
 
+  async assignPhlebotomist(labId, homeCollectionId, phlebotomistId, assignedBy) {
+    const phlebotomist = await User.findOne({ _id: phlebotomistId, labId, role: 'phlebotomist' });
+    if (!phlebotomist) {
+      throw new AppError('Phlebotomist not found', 'VALIDATION_FAILED', 404);
+    }
+    const collection = await HomeCollection.findOneAndUpdate(
+      { _id: homeCollectionId, labId, isDeleted: false },
+      { assignedPhlebotomist: phlebotomistId },
+      { new: true }
+    );
+    if (!collection) {
+      throw new AppError('Home collection not found', 'NOT_FOUND', 404);
+    }
+    return collection;
+  },
+
   /**
    * Transition home collection status.
    */

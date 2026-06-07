@@ -21,6 +21,12 @@ export const createHomeCollectionSchema = z.object({
   })
 });
 
+export const assignPhlebotomistSchema = z.object({
+  body: z.object({
+    assignedPhlebotomist: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid phlebotomist ID format')
+  })
+});
+
 export const updateStatusSchema = z.object({
   body: z.object({
     status: z.enum(['scheduled', 'enroute', 'arrived', 'collected', 'patientAbsent', 'cancelled'], {
