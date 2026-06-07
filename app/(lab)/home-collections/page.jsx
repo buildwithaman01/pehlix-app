@@ -149,7 +149,7 @@ export default function HomeCollectionsPage() {
 
   const { data: patients } = useQuery({
     queryKey: ['patients'],
-    queryFn: patientsApi.getPatients
+    queryFn: () => patientsApi.getList()
   });
 
   const { data: staff } = useQuery({
