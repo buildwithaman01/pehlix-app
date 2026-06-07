@@ -166,7 +166,10 @@ export default function PublicBookingPage() {
         <h1 className="text-xl font-bold text-neutral-900">{lab.name}</h1>
         <div className="flex items-center justify-center gap-4 text-sm text-neutral-500 mt-2">
           {lab.address && (
-            <span className="flex items-center"><MapPin className="w-3.5 h-3.5 mr-1" /> {lab.address}</span>
+            <span className="flex items-center">
+              <MapPin className="w-3.5 h-3.5 mr-1" /> 
+              {[lab.address.street, lab.address.city, lab.address.state, lab.address.pincode].filter(Boolean).join(', ')}
+            </span>
           )}
           {lab.phone && (
             <span className="flex items-center"><Phone className="w-3.5 h-3.5 mr-1" /> {lab.phone}</span>
