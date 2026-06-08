@@ -199,6 +199,8 @@ export const InvoiceController = {
 
       // Update invoice paid amount
       invoice.amountPaid = (invoice.amountPaid || 0) + amount;
+      // FIX-C-002: Always keep balanceAmount in sync — was previously stale after manual payment
+      invoice.balanceAmount = Math.max(0, invoice.totalAmount - invoice.amountPaid);
       
       if (invoice.amountPaid >= invoice.totalAmount) {
         invoice.paymentStatus = 'paid';

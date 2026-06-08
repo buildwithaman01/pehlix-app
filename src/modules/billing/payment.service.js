@@ -45,6 +45,8 @@ export const PaymentService = {
 
     // 3. Mark Invoice Paid and Update Balance
     invoice.amountPaid = (invoice.amountPaid || 0) + amountPaidNow;
+    // FIX-C-002: Always keep balanceAmount in sync — was previously stale after online payment
+    invoice.balanceAmount = Math.max(0, invoice.totalAmount - invoice.amountPaid);
     if (invoice.amountPaid >= invoice.totalAmount) {
       invoice.paymentStatus = 'paid';
     } else if (invoice.amountPaid > 0) {

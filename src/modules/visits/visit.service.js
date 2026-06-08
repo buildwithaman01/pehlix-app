@@ -5,6 +5,7 @@ import LabTest from '../staff/labTest.model.js';
 import Payment from '../billing/payment.model.js';
 import Sample from '../samples/sample.model.js';
 import Result from '../results/result.model.js';
+import Lab from '../staff/lab.model.js';
 import DoctorService from '../doctors/doctor.service.js';
 import { AppError } from '../../utils/errors.js';
 
@@ -193,9 +194,11 @@ export const VisitService = {
     // -----------------------------------------
 
     // Calculate billing amounts
+    // FIX-C-001: GST rate from lab config (default 0 — most diagnostic tests are GST-exempt in India)
+    const lab = await Lab.findById(labId).select('planConfig').lean();
+    const gstRate = lab?.planConfig?.features?.gstRate ?? 0;
     const subtotal = lineItems.reduce((sum, item) => sum + item.finalPrice, 0);
-    const gstRate = 18;
-    const gstAmount = Math.round((subtotal * (gstRate / 100)) * 100) / 100;
+    const gstAmount = gstRate > 0 ? Math.round((subtotal * (gstRate / 100)) * 100) / 100 : 0;
     const totalAmount = Math.round((subtotal + gstAmount) * 100) / 100;
 
     // Generate invoice code
@@ -555,9 +558,11 @@ export const VisitService = {
     visit.resultIds = createdResults;
     // ------------------------------------------------
 
+    // FIX-C-001: GST rate from lab config (default 0 — most diagnostic tests are GST-exempt)
+    const labDoc = await Lab.findById(labId).select('planConfig').lean();
+    const gstRate = labDoc?.planConfig?.features?.gstRate ?? 0;
     const subtotal = lineItems.reduce((sum, item) => sum + item.finalPrice, 0);
-    const gstRate = 18;
-    const gstAmount = Math.round((subtotal * (gstRate / 100)) * 100) / 100;
+    const gstAmount = gstRate > 0 ? Math.round((subtotal * (gstRate / 100)) * 100) / 100 : 0;
     const totalAmount = Math.round((subtotal + gstAmount) * 100) / 100;
 
     invoice.lineItems = lineItems;
