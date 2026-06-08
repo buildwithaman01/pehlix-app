@@ -394,6 +394,10 @@ app.use((err, req, res, next) => {
 
   return res.status(status).json({
     success: false,
+    code,
+    message,
+    // Forward err.details so custom error payloads (e.g. existingPatient on 409) reach the frontend
+    data: (err.details && Object.keys(err.details).length > 0) ? err.details : undefined,
     error: { code, message }
   });
 });

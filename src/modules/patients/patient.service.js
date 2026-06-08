@@ -30,6 +30,29 @@ export const PatientService = {
       );
     }
 
+    // FIX-B-001: Duplicate phone detection — prevent creating a second record for the same patient
+    if (data.phone) {
+      const existing = await this.findByPhone(labId, data.phone);
+      if (existing) {
+        throw new AppError(
+          `A patient with this phone number already exists: ${existing.firstName} ${existing.lastName || ''} (${existing.patientCode})`,
+          'PATIENT_DUPLICATE_PHONE',
+          409,
+          {
+            existingPatient: {
+              _id: existing._id,
+              patientCode: existing.patientCode,
+              firstName: existing.firstName,
+              lastName: existing.lastName,
+              phone: existing.phone,
+              age: existing.age,
+              gender: existing.gender
+            }
+          }
+        );
+      }
+    }
+
     const patientCode = await this.generatePatientCode(labId);
 
     const patient = new Patient({

@@ -68,7 +68,28 @@ export default function PatientsPage() {
       setShowRegister(false);
       setForm({ firstName: '', lastName: '', phone: '', age: '', ageUnit: 'years', gender: '', email: '', referredBy: 'none', consentGiven: false });
     },
-    onError: (err) => toast.error(err?.response?.data?.message || 'Registration failed'),
+    onError: (err) => {
+      // FIX-B-001: Detect duplicate phone and offer to redirect to existing patient
+      const code = err?.response?.data?.code;
+      const existing = err?.response?.data?.data?.existingPatient;
+      if (code === 'PATIENT_DUPLICATE_PHONE' && existing) {
+        toast.warning(
+          <span>
+            Patient already exists:{' '}
+            <strong>{existing.firstName} {existing.lastName}</strong> ({existing.patientCode}).{' '}
+            <button
+              onClick={() => { setShowRegister(false); router.push(`/patients/${existing._id}`); }}
+              className="underline font-semibold text-amber-700 hover:text-amber-900"
+            >
+              Open their profile →
+            </button>
+          </span>,
+          { duration: 8000 }
+        );
+      } else {
+        toast.error(err?.response?.data?.message || 'Registration failed');
+      }
+    },
   });
 
   const createReferrerMutation = useMutation({
