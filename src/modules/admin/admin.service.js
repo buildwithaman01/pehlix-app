@@ -444,8 +444,15 @@ export const AdminService = {
         email: targetUser.email,
         role: targetUser.role,
         roles: targetUser.roles || [targetUser.role],
-        labId: labId.toString(),
-        labName,
+        // FIX-001: Return labId as a structured object (matching normal login populate result)
+        // so that user.labId.planConfig.modules works correctly in layout.jsx module gating.
+        // Previously returned labId.toString() (plain string), breaking all module gates.
+        labId: {
+          _id: lab._id,
+          name: lab.name,
+          planConfig: lab.planConfig || {}
+        },
+        labName, // kept for backward compat — equals lab.name
         planConfig: lab?.planConfig || {}
       }
     };

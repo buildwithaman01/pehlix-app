@@ -268,9 +268,15 @@ export default function LabDetailPage({ params: paramsPromise }) {
 
   const handleSaveModules = () => {
     // Send full modules updates nested under config key
-    updateConfigMutation.mutate({
-      modules: modulesForm
-    });
+    updateConfigMutation.mutate(
+      { modules: modulesForm },
+      {
+        // FIX-002: Inform superadmin that lab users need to refresh to see changes.
+        onSuccess: () => {
+          toast.info('Lab users will see module changes on their next login or page refresh.', { duration: 5000 });
+        }
+      }
+    );
   };
 
   const handleSaveFeatures = () => {

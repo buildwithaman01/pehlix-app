@@ -38,6 +38,8 @@ export default function Providers({ children }) {
             setInitialized(true);
             return;
           } else {
+            // FIX-003: Set a flag so admin layout can show an expiry toast when returning to /platform
+            sessionStorage.setItem('pehlix_impersonation_expired', '1');
             sessionStorage.removeItem('pehlix_impersonation');
           }
         }

@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/auth.store';
+import { toast } from 'sonner';
 import { 
   Building2, 
   BarChart3, 
@@ -74,6 +75,17 @@ export default function AdminLayout({ children }) {
       </div>
     );
   }
+
+  // FIX-003: Show toast when admin returns after an impersonation session expired
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const expired = sessionStorage.getItem('pehlix_impersonation_expired');
+      if (expired) {
+        sessionStorage.removeItem('pehlix_impersonation_expired');
+        toast.warning('Impersonation session expired (30-min limit). You are back in the Superadmin portal.', { duration: 6000 });
+      }
+    }
+  }, []);
 
   const handleLogout = () => {
     clearUser();

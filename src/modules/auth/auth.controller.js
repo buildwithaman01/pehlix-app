@@ -50,8 +50,11 @@ const AuthController = {
       const otp = AuthService.generateOtp();
       await AuthService.storeOtp(targetIdentifier, otp);
       
-      // Log generated OTP to console for easy staging/sandbox access
-      console.log(`[OTP_LOG] Generated OTP for ${targetIdentifier}: ${otp}`);
+      // FIX-004 (Security): OTP log ONLY in non-production. Was previously logging in production
+      // which means OTP values were visible in Vercel production logs accessible to team members.
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[OTP_LOG] Generated OTP for ${targetIdentifier}: ${otp}`);
+      }
 
       // Extract recipient's email address and name for personalized delivery
       let recipientEmail = email || (user ? user.email : (patientRecord ? patientRecord.email : null));
