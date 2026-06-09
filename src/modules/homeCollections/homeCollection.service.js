@@ -17,7 +17,7 @@ export const HomeCollectionService = {
     if (!patient) {
       throw new AppError('Patient not found', 'VALIDATION_FAILED', 404);
     }
-    const phlebotomist = await User.findOne({ _id: data.assignedPhlebotomist, labId, role: 'phlebotomist' });
+    const phlebotomist = await User.findOne({ _id: data.assignedPhlebotomist, labId, roles: 'phlebotomist' });
     if (!phlebotomist) {
       throw new AppError('Phlebotomist not found', 'VALIDATION_FAILED', 404);
     }
@@ -115,7 +115,7 @@ export const HomeCollectionService = {
   },
 
   async assignPhlebotomist(labId, homeCollectionId, phlebotomistId, assignedBy) {
-    const phlebotomist = await User.findOne({ _id: phlebotomistId, labId, role: 'phlebotomist' });
+    const phlebotomist = await User.findOne({ _id: phlebotomistId, labId, roles: 'phlebotomist' });
     if (!phlebotomist) {
       throw new AppError('Phlebotomist not found', 'VALIDATION_FAILED', 404);
     }

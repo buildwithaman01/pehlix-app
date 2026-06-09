@@ -4,6 +4,7 @@ import Package from '../staff/package.model.js';
 import Patient from '../patients/patient.model.js';
 import VisitService from '../visits/visit.service.js';
 import HomeCollection from '../homeCollections/homeCollection.model.js';
+import { calculateBlindIndex } from '../../utils/crypto.js';
 
 class PublicService {
   /**
@@ -38,8 +39,9 @@ class PublicService {
   async createBooking(data) {
     const { labId, patientData, collectionType, tests, address, scheduledDate, timeSlot } = data;
 
-    // 1. Find or create patient
-    let patient = await Patient.findOne({ labId, phone: patientData.phone });
+    // FIX-F-002: patient.phone is AES-encrypted in DB. Must use blind index for lookup.
+    const phoneBlindIndex = calculateBlindIndex(patientData.phone, 'phone');
+    let patient = await Patient.findOne({ labId, phoneBlindIndex });
     if (!patient) {
       const genderMap = { 'M': 'male', 'F': 'female', 'O': 'other', 'male': 'male', 'female': 'female', 'other': 'other' };
       const mappedGender = patientData.gender ? (genderMap[patientData.gender] || patientData.gender.toLowerCase()) : 'other';
