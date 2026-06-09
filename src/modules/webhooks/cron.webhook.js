@@ -216,7 +216,8 @@ cronRouter.post('/low-stock-alerts', async (req, res) => {
       const lab = await Lab.findById(labIdStr);
       if (!lab || !lab.isActive || lab.isSuspended) continue;
 
-      const ownerUser = await User.findOne({ labId: lab._id, role: 'owner' });
+      // FIX-G-001: Use roles[] array (users migrated away from legacy singular role field)
+      const ownerUser = await User.findOne({ labId: lab._id, roles: 'owner' });
       const phone = ownerUser?.phone || lab.phone;
 
       if (!phone) {

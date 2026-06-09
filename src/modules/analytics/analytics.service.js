@@ -868,7 +868,8 @@ export const AnalyticsService = {
 
     let ownerName = lab.owner?.name || '';
     if (!ownerName) {
-      const ownerUser = await User.findOne({ labId: labIdObj, role: 'owner' });
+      // FIX-G-002: Use roles[] (legacy role field is not queried reliably)
+      const ownerUser = await User.findOne({ labId: labIdObj, roles: 'owner' });
       ownerName = ownerUser?.name || 'Lab Owner';
     }
 
@@ -950,7 +951,8 @@ export const AnalyticsService = {
       const batch = activeLabs.slice(i, i + 10);
       await Promise.all(batch.map(async (lab) => {
         try {
-          const ownerUser = await User.findOne({ labId: lab._id, role: 'owner' });
+          // FIX-G-002: Use roles[] (legacy role field is not queried reliably)
+          const ownerUser = await User.findOne({ labId: lab._id, roles: 'owner' });
           const phone = ownerUser?.phone || lab.phone;
 
           if (!phone) {

@@ -199,7 +199,8 @@ export const AdminService = {
     // 5. Create the Owner User account
     const owner = new User({
       name: data.ownerName,
-      role: 'owner',
+      role: 'owner',   // kept for legacy compat during migration
+      roles: ['owner'],
       phone: data.ownerPhone,
       email: data.ownerEmail,
       labId: savedLab._id,
@@ -303,7 +304,8 @@ export const AdminService = {
     await User.updateMany({ labId: lab._id }, { $inc: { tokenVersion: 1 } });
 
     // WhatsApp lab owner
-    const ownerUser = await User.findOne({ labId: lab._id, role: 'owner' });
+    // FIX-G-002: Use roles[] (legacy role field is not queried reliably)
+    const ownerUser = await User.findOne({ labId: lab._id, roles: 'owner' });
     const phone = ownerUser?.phone || lab.phone;
     if (phone) {
       const message = `Your lab "${lab.name}" has been suspended. Reason: ${reason}`;
@@ -344,7 +346,8 @@ export const AdminService = {
     await lab.save();
 
     // WhatsApp owner
-    const ownerUser = await User.findOne({ labId: lab._id, role: 'owner' });
+    // FIX-G-002: Use roles[] (legacy role field is not queried reliably)
+    const ownerUser = await User.findOne({ labId: lab._id, roles: 'owner' });
     const phone = ownerUser?.phone || lab.phone;
     if (phone) {
       const message = `Your lab "${lab.name}" has been restored successfully.`;
@@ -816,7 +819,8 @@ export const AdminService = {
     let sentCount = 0;
 
     for (const lab of labs) {
-      const ownerUser = await User.findOne({ labId: lab._id, role: 'owner' });
+      // FIX-G-002: Use roles[] (legacy role field is not queried reliably)
+      const ownerUser = await User.findOne({ labId: lab._id, roles: 'owner' });
       const phone = ownerUser?.phone || lab.phone;
 
       if (channel.includes('whatsapp') && phone) {
