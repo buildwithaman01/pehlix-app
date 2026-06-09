@@ -25,7 +25,7 @@ const qstashPublishJSON = async (options) => {
 const getNodes = () => {
   const nodes = [
     process.env.RENDER_PDF_ENDPOINT,
-    process.env.GCP_PDF_ENDPOINT,
+    // process.env.GCP_PDF_ENDPOINT, // Temporarily disabled while GCP is down
     process.env.RAILWAY_PDF_ENDPOINT
   ].map(node => node ? node.trim() : null)
    .filter(node => node && 
