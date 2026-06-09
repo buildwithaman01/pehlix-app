@@ -23,11 +23,13 @@ export const DoctorService = {
       if (!data.phone) {
         throw new AppError('Phone number is required to enable portal access', 'PHONE_REQUIRED', 400);
       }
-      let user = await User.findOne({ phone: data.phone, role: 'doctor' });
+      // FIX-G-003: Use roles[] for lookup; set both role (legacy compat) and roles[] on create
+      let user = await User.findOne({ phone: data.phone, roles: 'doctor', labId });
       if (!user) {
         user = await User.create({
           name: data.name,
           role: 'doctor',
+          roles: ['doctor'],
           phone: data.phone,
           labId: labId,
           isActive: true,
@@ -54,11 +56,13 @@ export const DoctorService = {
           throw new AppError('Phone number is required to enable portal access', 'PHONE_REQUIRED', 400);
         }
         const name = data.name || doctor.name;
-        let user = await User.findOne({ phone, role: 'doctor' });
+        // FIX-G-003: Use roles[] for lookup; set both role (legacy compat) and roles[] on create
+        let user = await User.findOne({ phone, roles: 'doctor', labId });
         if (!user) {
           user = await User.create({
             name,
             role: 'doctor',
+            roles: ['doctor'],
             phone,
             labId,
             isActive: true,
