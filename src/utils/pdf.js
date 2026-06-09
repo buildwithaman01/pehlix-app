@@ -118,7 +118,7 @@ export const PdfService = {
 
     console.log(`[PdfService] Enqueuing PDF job for report ${reportId} to endpoint: ${node}`);
 
-    const failureCallback = `${config.NEXT_PUBLIC_APP_URL}/api/internal/pdf/failed`;
+    const failureCallback = `${config.NEXT_PUBLIC_APP_URL}/api/internal/pdf/failed?token=${config.PDF_SERVICE_SECRET || process.env.PDF_SERVICE_SECRET}`;
 
     // Publish to QStash (90s timeout)
     const res = await qstashPublishJSON({
@@ -175,7 +175,7 @@ export const PdfService = {
 
     console.log(`[PdfService] Node failed: ${failedNode}. Re-queuing report ${reportId} to next node: ${nextNode}`);
 
-    const failureCallback = `${config.NEXT_PUBLIC_APP_URL}/api/internal/pdf/failed`;
+    const failureCallback = `${config.NEXT_PUBLIC_APP_URL}/api/internal/pdf/failed?token=${config.PDF_SERVICE_SECRET || process.env.PDF_SERVICE_SECRET}`;
 
     const res = await qstashPublishJSON({
       url: nextNode,

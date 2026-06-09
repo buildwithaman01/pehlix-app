@@ -13,11 +13,20 @@ import WhatsAppOutboxService from '../whatsappOutbox/whatsappOutbox.service.js';
  */
 function verifySecret(req, res) {
   const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    res.status(401).json({ error: 'Authorization header missing' });
+  const queryToken = req.query?.token;
+  
+  let token = null;
+  if (authHeader) {
+    token = authHeader.replace('Bearer ', '').trim();
+  } else if (queryToken) {
+    token = queryToken;
+  }
+
+  if (!token) {
+    res.status(401).json({ error: 'Authorization token missing' });
     return false;
   }
-  const token = authHeader.replace('Bearer ', '').trim();
+  
   if (token !== config.PDF_SERVICE_SECRET) {
     res.status(401).json({ error: 'Unauthorized: Invalid token' });
     return false;
