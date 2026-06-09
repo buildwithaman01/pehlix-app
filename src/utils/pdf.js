@@ -118,19 +118,29 @@ export const PdfService = {
 
     console.log(`[PdfService] Enqueuing PDF job for report ${reportId} to endpoint: ${node}`);
 
-    const failureCallback = `${config.NEXT_PUBLIC_APP_URL}/api/internal/pdf/failed?token=${config.PDF_SERVICE_SECRET || process.env.PDF_SERVICE_SECRET}`;
+    const isLocalApp = config.NEXT_PUBLIC_APP_URL.includes('localhost') || config.NEXT_PUBLIC_APP_URL.includes('127.0.0.1');
+    const failureCallback = isLocalApp ? undefined : `${config.NEXT_PUBLIC_APP_URL}/api/internal/pdf/failed?token=${config.PDF_SERVICE_SECRET || process.env.PDF_SERVICE_SECRET}`;
+    const successCallback = isLocalApp ? undefined : `${config.NEXT_PUBLIC_APP_URL}/api/internal/pdf/generated?token=${config.PDF_SERVICE_SECRET || process.env.PDF_SERVICE_SECRET}`;
 
     // Publish to QStash (90s timeout)
-    const res = await qstashPublishJSON({
+    const options = {
       url: node,
       body: payload,
       headers: {
         'Authorization': `Bearer ${config.PDF_SERVICE_SECRET || process.env.PDF_SERVICE_SECRET}`
       },
       retries: 3,
-      timeout: 90,
-      failureCallback
-    });
+      timeout: 90
+    };
+    
+    if (failureCallback) {
+      options.failureCallback = failureCallback;
+    }
+    if (successCallback) {
+      options.callback = successCallback;
+    }
+
+    const res = await qstashPublishJSON(options);
 
     // Update report record
     await Report.findByIdAndUpdate(reportId, {
@@ -175,18 +185,28 @@ export const PdfService = {
 
     console.log(`[PdfService] Node failed: ${failedNode}. Re-queuing report ${reportId} to next node: ${nextNode}`);
 
-    const failureCallback = `${config.NEXT_PUBLIC_APP_URL}/api/internal/pdf/failed?token=${config.PDF_SERVICE_SECRET || process.env.PDF_SERVICE_SECRET}`;
+    const isLocalApp = config.NEXT_PUBLIC_APP_URL.includes('localhost') || config.NEXT_PUBLIC_APP_URL.includes('127.0.0.1');
+    const failureCallback = isLocalApp ? undefined : `${config.NEXT_PUBLIC_APP_URL}/api/internal/pdf/failed?token=${config.PDF_SERVICE_SECRET || process.env.PDF_SERVICE_SECRET}`;
+    const successCallback = isLocalApp ? undefined : `${config.NEXT_PUBLIC_APP_URL}/api/internal/pdf/generated?token=${config.PDF_SERVICE_SECRET || process.env.PDF_SERVICE_SECRET}`;
 
-    const res = await qstashPublishJSON({
+    const options = {
       url: nextNode,
       body: payload,
       headers: {
         'Authorization': `Bearer ${config.PDF_SERVICE_SECRET || process.env.PDF_SERVICE_SECRET}`
       },
       retries: 3,
-      timeout: 90,
-      failureCallback
-    });
+      timeout: 90
+    };
+
+    if (failureCallback) {
+      options.failureCallback = failureCallback;
+    }
+    if (successCallback) {
+      options.callback = successCallback;
+    }
+
+    const res = await qstashPublishJSON(options);
 
     report.selectedNode = nextNode;
     report.failedNodes = failedNodes;
