@@ -43,7 +43,17 @@ export const pdfWebhookController = {
     try {
       if (!verifySecret(req, res)) return;
 
-      const { reportId, pdfUrl, qrVerificationId } = req.body;
+      let payload = req.body;
+      if (payload && payload.body && typeof payload.body === 'string' && !payload.pdfUrl) {
+        try {
+          const decoded = Buffer.from(payload.body, 'base64').toString('utf-8');
+          payload = JSON.parse(decoded);
+        } catch (e) {
+          console.warn('[PdfWebhook] Failed to decode QStash success body:', e.message);
+        }
+      }
+
+      const { reportId, pdfUrl, qrVerificationId } = payload;
       if (!reportId || !pdfUrl) {
         return res.status(400).json({ error: 'reportId and pdfUrl are required' });
       }
