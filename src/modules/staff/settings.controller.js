@@ -55,7 +55,9 @@ export const SettingsController = {
         razorpayKeySecret,
         communicationMode,
         paymentCheckMode,
-        showWhatsAppOnResultEntry
+        showWhatsAppOnResultEntry,
+        // FIX-D-001: expose gstRate so lab owners can configure their billing tax rate
+        gstRate
       } = req.body;
 
       const lab = await Lab.findById(labId);
@@ -105,6 +107,14 @@ export const SettingsController = {
       if (communicationMode !== undefined) lab.planConfig.features.communicationMode = communicationMode;
       if (paymentCheckMode !== undefined) lab.planConfig.features.paymentCheckMode = paymentCheckMode;
       if (showWhatsAppOnResultEntry !== undefined) lab.planConfig.features.showWhatsAppOnResultEntry = showWhatsAppOnResultEntry;
+      // FIX-D-001: persist gstRate (0 = exempt, 18 = standard GST) — validated to 0–28 range
+      if (gstRate !== undefined) {
+        const rate = Number(gstRate);
+        if (isNaN(rate) || rate < 0 || rate > 28) {
+          return sendError(res, 'VALIDATION_FAILED', 'gstRate must be a number between 0 and 28', {}, 400);
+        }
+        lab.planConfig.features.gstRate = rate;
+      }
 
       lab.markModified('planConfig');
       await lab.save();
