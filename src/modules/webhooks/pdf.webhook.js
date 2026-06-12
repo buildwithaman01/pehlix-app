@@ -8,10 +8,18 @@ import PdfService from '../../utils/pdf.js';
 import { config } from '../../config/index.js';
 import WhatsAppOutboxService from '../whatsappOutbox/whatsappOutbox.service.js';
 
+import { Receiver } from '@upstash/qstash';
+
+const qstashReceiver = new Receiver({
+  currentSigningKey: config.UPSTASH_QSTASH_CURRENT_SIGNING_KEY || process.env.UPSTASH_QSTASH_CURRENT_SIGNING_KEY || process.env.QSTASH_CURRENT_SIGNING_KEY || '',
+  nextSigningKey: config.UPSTASH_QSTASH_NEXT_SIGNING_KEY || process.env.UPSTASH_QSTASH_NEXT_SIGNING_KEY || process.env.QSTASH_NEXT_SIGNING_KEY || '',
+});
+
 /**
- * Helper to verify shared PDF service secret.
+ * Helper to verify shared PDF service secret and QStash signature.
  */
-function verifySecret(req, res) {
+async function verifyQStashSignature(req, res) {
+  const signature = req.headers['upstash-signature'];
   const authHeader = req.headers.authorization;
   const queryToken = req.query?.token;
   
@@ -22,15 +30,34 @@ function verifySecret(req, res) {
     token = queryToken;
   }
 
-  if (!token) {
-    res.status(401).json({ error: 'Authorization token missing' });
-    return false;
-  }
-  
-  if (token !== config.PDF_SERVICE_SECRET) {
+  // Validate the static secret token if present
+  if (token && token !== config.PDF_SERVICE_SECRET) {
     res.status(401).json({ error: 'Unauthorized: Invalid token' });
     return false;
   }
+
+  // If there's an Upstash signature, verify it
+  if (signature) {
+    try {
+      const body = req.rawBody || JSON.stringify(req.body);
+      await qstashReceiver.verify({
+        signature,
+        body,
+      });
+      return true;
+    } catch (error) {
+      console.error('[QStash] Signature verification failed:', error.message);
+      res.status(401).json({ error: 'Invalid Upstash signature' });
+      return false;
+    }
+  }
+
+  // Fallback for local development or direct service callbacks without QStash
+  if (!token) {
+    res.status(401).json({ error: 'Authorization token or signature missing' });
+    return false;
+  }
+
   return true;
 }
 
@@ -41,7 +68,8 @@ export const pdfWebhookController = {
    */
   async onPdfGenerated(req, res, next) {
     try {
-      if (!verifySecret(req, res)) return;
+      const isValid = await verifyQStashSignature(req, res);
+      if (!isValid) return;
 
       let payload = req.body;
       if (payload && payload.body && typeof payload.body === 'string' && !payload.pdfUrl) {
@@ -74,7 +102,8 @@ export const pdfWebhookController = {
    */
   async onPdfFailed(req, res, next) {
     try {
-      if (!verifySecret(req, res)) return;
+      const isValid = await verifyQStashSignature(req, res);
+      if (!isValid) return;
 
       const { url, body, error } = req.body;
       const failedNode = url;
@@ -145,27 +174,38 @@ export const pdfWebhookController = {
 
         console.error(`URGENT PDF FAILURE — reportId: ${reportId}, labId: ${labId}, all failed nodes: ${(report.failedNodes || []).join(', ')}`);
 
-        // Send WhatsApp alert to super admin
-        const adminPhone = process.env.SUPER_ADMIN_PHONE || '9999999999';
-        try {
-          await WhatsAppService.send(adminPhone, 'staff_device_alert', {
-            staffName: 'Pehlix PDF Engine',
-            labName: labName,
-            loginTime: new Date().toISOString(),
-            deviceInfo: `DLQ failure for Patient: ${patientName}, Report: ${reportCode}, Error: ${errorMessage.substring(0, 100)}`
-          });
-        } catch (wsErr) {
-          console.error('[PdfWebhook] Failed to send WhatsApp alert to super admin:', wsErr);
-        }
+        // Send WhatsApp direct-text alert to super admin
+        // NOTE: Using sendDirectText (not a template) because this is an operational alert
+        // to the platform owner, not a patient-facing notification.
+        const adminPhone = process.env.SUPER_ADMIN_PHONE;
+        if (adminPhone) {
+          const alertMessage = [
+            `🚨 PEHLIX PDF FAILURE ALERT`,
+            `Lab: ${labName}`,
+            `Patient: ${patientName}`,
+            `Report: ${reportCode}`,
+            `Attempts: ${report.generationAttempts}/3`,
+            `Error: ${errorMessage.substring(0, 120)}`,
+            `Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST`
+          ].join('\n');
 
-        // Send SMS fallback to super admin
-        try {
-          await SmsService.send(
-            adminPhone,
-            `ALERT: PDF generation failed for ${patientName} at ${labName}. Report ID: ${reportId}. Error: ${errorMessage.substring(0, 100)}`
-          );
-        } catch (smsErr) {
-          console.error('[PdfWebhook] Failed to send SMS alert to super admin:', smsErr);
+          try {
+            await WhatsAppService.sendDirectText(adminPhone, alertMessage, report.labId?._id || labId);
+          } catch (wsErr) {
+            console.error('[PdfWebhook] Failed to send WhatsApp alert to super admin:', wsErr);
+          }
+
+          // SMS as hard fallback in case WhatsApp also fails
+          try {
+            await SmsService.send(
+              adminPhone,
+              `PEHLIX ALERT: PDF failed for ${patientName} at ${labName}. Report: ${reportCode}. Error: ${errorMessage.substring(0, 80)}`
+            );
+          } catch (smsErr) {
+            console.error('[PdfWebhook] Failed to send SMS alert to super admin:', smsErr);
+          }
+        } else {
+          console.error('[PdfWebhook] SUPER_ADMIN_PHONE env var not set — skipping admin alert for failed report', reportId);
         }
 
         return res.status(200).json({ status: 'logged', action: 'marked_failed' });
@@ -193,6 +233,25 @@ export const pdfWebhookController = {
             type: 'report_generation_failed',
             message: `Report could not be generated for ${patientName} (${reportCode}). No fallback nodes available.`
           });
+
+          // Also alert super admin on no-fallback-nodes failure
+          const adminPhone = process.env.SUPER_ADMIN_PHONE;
+          if (adminPhone) {
+            const alertMessage = [
+              `🚨 PEHLIX PDF FAILURE — NO NODES`,
+              `Lab: ${labName}`,
+              `Patient: ${patientName}`,
+              `Report: ${reportCode}`,
+              `Error: No fallback PDF nodes available`,
+              `Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST`
+            ].join('\n');
+
+            try {
+              await WhatsAppService.sendDirectText(adminPhone, alertMessage, report.labId?._id || labId);
+            } catch (wsErr) {
+              console.error('[PdfWebhook] Failed to send no-nodes WhatsApp alert to super admin:', wsErr);
+            }
+          }
 
           return res.status(200).json({ status: 'logged', action: 'failed_no_fallback' });
         }

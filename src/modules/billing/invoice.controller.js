@@ -301,6 +301,55 @@ export const InvoiceController = {
       next(error);
     }
   }
+  /**
+   * Export invoices to CSV format.
+   * Owner role only.
+   */
+  async exportInvoices(req, res, next) {
+    try {
+      const labId = req.user.labId;
+      const invoices = await Invoice.find({ labId, isDeleted: { $ne: true } })
+        .populate('patientId', 'firstName lastName phone')
+        .sort({ createdAt: -1 })
+        .lean();
+
+      // Log the export action (Audit)
+      const { default: Audit } = await import('../audit/audit.model.js');
+      await Audit.create({
+        labId,
+        action: 'exported',
+        entityType: 'export',
+        performedBy: req.user._id,
+        details: { count: invoices.length, type: 'invoices' }
+      });
+
+      // Simple CSV generation
+      const headers = ['Invoice Code', 'Patient Name', 'Patient Phone', 'Total Amount', 'Amount Paid', 'Balance', 'Payment Status', 'Created At'];
+      const rows = invoices.map(inv => {
+        const pName = inv.patientId ? `${inv.patientId.firstName} ${inv.patientId.lastName || ''}`.trim() : 'Unknown';
+        const pPhone = inv.patientId ? inv.patientId.phone : '';
+        const balance = inv.totalAmount - (inv.amountPaid || 0);
+        return [
+          `"${inv.invoiceCode || ''}"`,
+          `"${pName}"`,
+          `"${pPhone}"`,
+          `"${inv.totalAmount || 0}"`,
+          `"${inv.amountPaid || 0}"`,
+          `"${balance}"`,
+          `"${inv.paymentStatus || ''}"`,
+          `"${new Date(inv.createdAt).toISOString()}"`
+        ];
+      });
+
+      const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=invoices_export_${new Date().getTime()}.csv`);
+      return res.status(200).send(csvContent);
+    } catch (error) {
+      next(error);
+    }
+  }
 };
 
 export default InvoiceController;

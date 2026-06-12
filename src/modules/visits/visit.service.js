@@ -60,6 +60,32 @@ export const VisitService = {
    * Creates a new visit and automatically generates its associated GST invoice.
    */
   async createVisit(labId, data, createdBy) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const lab = await Lab.findById(labId).select('planConfig').session(session).lean();
+      const monthlyTestsLimit = lab?.planConfig?.limits?.monthlyTests;
+
+    if (monthlyTestsLimit) {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      
+      // We aggregate the total number of tests booked this month
+      const currentMonthVisits = await Visit.find({
+        labId,
+        createdAt: { $gte: startOfMonth, $lte: endOfMonth }
+      }).select('tests');
+      
+      const currentMonthTestsCount = currentMonthVisits.reduce((acc, v) => acc + (v.tests?.length || 0), 0);
+      const newTestsCount = data.tests?.length || 0;
+
+      if (currentMonthTestsCount + newTestsCount > monthlyTestsLimit) {
+        throw new AppError(`Monthly test limit exceeded (${monthlyTestsLimit}). Please upgrade your plan to book more tests.`, 'PLAN_LIMIT_EXCEEDED', 403);
+      }
+    }
+
     // Generate visit code
     const visitCode = await this.generateVisitCode(labId);
 
@@ -93,10 +119,10 @@ export const VisitService = {
       }
     });
 
-    await visit.save();
+    await visit.save({ session });
 
     // Fetch prices from LabTest collection and populate testId for Sample/Result generation
-    const labTests = await LabTest.find({ labId, _id: { $in: tests } }).populate('testId');
+    const labTests = await LabTest.find({ labId, _id: { $in: tests } }).session(session).populate('testId');
     if (labTests.length !== tests.length) {
       throw new AppError('Some selected tests are invalid or not found for this lab', 'TEST_NOT_FOUND', 404);
     }
@@ -161,7 +187,7 @@ export const VisitService = {
           notes: 'Auto-generated during visit creation'
         }]
       });
-      await sample.save();
+      await sample.save({ session });
       createdSamples.push(sample._id);
       sampleIndex++;
 
@@ -184,7 +210,7 @@ export const VisitService = {
           isApproved: false,
           isDeleted: false
         });
-        await resultDoc.save();
+        await resultDoc.save({ session });
         createdResults.push(resultDoc._id);
       }
     }
@@ -195,8 +221,8 @@ export const VisitService = {
 
     // Calculate billing amounts
     // FIX-C-001: GST rate from lab config (default 0 — most diagnostic tests are GST-exempt in India)
-    const lab = await Lab.findById(labId).select('planConfig').lean();
-    const gstRate = lab?.planConfig?.features?.gstRate ?? 0;
+    const labDocForGst = await Lab.findById(labId).select('planConfig').session(session).lean();
+    const gstRate = labDocForGst?.planConfig?.features?.gstRate ?? 0;
     const subtotal = lineItems.reduce((sum, item) => sum + item.finalPrice, 0);
     const gstAmount = gstRate > 0 ? Math.round((subtotal * (gstRate / 100)) * 100) / 100 : 0;
     const totalAmount = Math.round((subtotal + gstAmount) * 100) / 100;
@@ -239,12 +265,12 @@ export const VisitService = {
       paymentStatus
     });
 
-    await invoice.save();
+    await invoice.save({ session });
 
     // Create Payment transaction record if payment was made
     if (finalAmountPaid > 0) {
       const mappedMethod = ['cash', 'upi', 'card'].includes(paymentMethod) ? paymentMethod : 'cash';
-      await Payment.create({
+      await Payment.create([{
         labId,
         invoiceId: invoice._id,
         patientId,
@@ -253,7 +279,7 @@ export const VisitService = {
         status: 'success',
         collectedBy: createdBy,
         notes: `Collected at registration via ${paymentMethod}`
-      });
+      }], { session });
     }
 
     // Trigger doctor commission calculation if the invoice is fully paid
@@ -263,7 +289,8 @@ export const VisitService = {
           labId,
           visit._id,
           invoice._id,
-          totalAmount
+          totalAmount,
+          session
         );
       } catch (err) {
         console.error('[VisitService] Failed to calculate and record doctor commission:', err);
@@ -272,7 +299,7 @@ export const VisitService = {
 
     // Update visit with invoiceId
     visit.invoiceId = invoice._id;
-    await visit.save();
+    await visit.save({ session });
 
     // Track total referrals and revenue for the referring doctor/agent
     if (referredBy) {
@@ -280,14 +307,22 @@ export const VisitService = {
         const Doctor = mongoose.model('Doctor');
         await Doctor.updateOne(
           { _id: referredBy, labId },
-          { $inc: { totalReferrals: 1, totalRevenue: totalAmount } }
+          { $inc: { totalReferrals: 1, totalRevenue: totalAmount } },
+          { session }
         );
       } catch (err) {
         console.error('[VisitService] Failed to update doctor totals:', err);
       }
     }
 
-    return { visit, invoice };
+      await session.commitTransaction();
+      return { visit, invoice };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   },
 
   /**
@@ -408,24 +443,30 @@ export const VisitService = {
    * Appends tests to a visit and recalculates invoice line items, GST, and totals.
    */
   async addTests(labId, visitId, testIds, updatedBy) {
-    const visit = await Visit.findOne({ _id: visitId, labId });
-    if (!visit) {
-      throw new AppError('Visit not found', 'VISIT_NOT_FOUND', 404);
-    }
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const visit = await Visit.findOne({ _id: visitId, labId }).session(session);
+      if (!visit) {
+        throw new AppError('Visit not found', 'VISIT_NOT_FOUND', 404);
+      }
 
     // Filter out tests that are already in the visit to avoid duplicate entries
     const existingTestsSet = new Set(visit.tests.map(id => id.toString()));
     const newTestsFiltered = testIds.filter(id => !existingTestsSet.has(id.toString()));
 
     if (newTestsFiltered.length === 0) {
-      const invoice = await Invoice.findOne({ visitId: visit._id, labId });
+      const invoice = await Invoice.findOne({ visitId: visit._id, labId }).session(session);
+      await session.abortTransaction();
+      session.endSession();
       return { visit, invoice };
     }
 
     visit.tests = [...visit.tests, ...newTestsFiltered];
-    await visit.save();
+    await visit.save({ session });
 
-    let invoice = await Invoice.findOne({ visitId: visit._id, labId });
+    let invoice = await Invoice.findOne({ visitId: visit._id, labId }).session(session);
     if (!invoice) {
       const invoiceCode = await this.generateInvoiceCode(labId);
       invoice = new Invoice({
@@ -445,7 +486,7 @@ export const VisitService = {
     }
 
     // Fetch details for all tests in the visit, including populated testId
-    const labTests = await LabTest.find({ labId, _id: { $in: visit.tests } }).populate('testId');
+    const labTests = await LabTest.find({ labId, _id: { $in: visit.tests } }).session(session).populate('testId');
     const testsMap = labTests.reduce((acc, lt) => {
       acc[lt._id.toString()] = lt;
       return acc;
@@ -489,7 +530,7 @@ export const VisitService = {
     const createdResults = visit.resultIds ? [...visit.resultIds] : [];
     
     // Find existing highest sample index to avoid barcode collisions
-    const existingSamples = await Sample.find({ visitId: visit._id });
+    const existingSamples = await Sample.find({ visitId: visit._id }).session(session);
     let maxIndex = 0;
     existingSamples.forEach(s => {
       if (s.barcodeId && s.barcodeId.startsWith(visit.visitCode + '-')) {
@@ -525,7 +566,7 @@ export const VisitService = {
             notes: 'Auto-generated during add tests'
           }]
         });
-        await sample.save();
+        await sample.save({ session });
         createdSamples.push(sample._id);
         sampleIndex++;
       }
@@ -549,7 +590,7 @@ export const VisitService = {
           isApproved: false,
           isDeleted: false
         });
-        await resultDoc.save();
+        await resultDoc.save({ session });
         createdResults.push(resultDoc._id);
       }
     }
@@ -559,7 +600,7 @@ export const VisitService = {
     // ------------------------------------------------
 
     // FIX-C-001: GST rate from lab config (default 0 — most diagnostic tests are GST-exempt)
-    const labDoc = await Lab.findById(labId).select('planConfig').lean();
+    const labDoc = await Lab.findById(labId).select('planConfig').session(session).lean();
     const gstRate = labDoc?.planConfig?.features?.gstRate ?? 0;
     const subtotal = lineItems.reduce((sum, item) => sum + item.finalPrice, 0);
     const gstAmount = gstRate > 0 ? Math.round((subtotal * (gstRate / 100)) * 100) / 100 : 0;
@@ -567,6 +608,7 @@ export const VisitService = {
 
     invoice.lineItems = lineItems;
     invoice.subtotal = subtotal;
+    invoice.gstRate = gstRate;
     invoice.gstAmount = gstAmount;
     invoice.totalAmount = totalAmount;
     invoice.balanceAmount = totalAmount - invoice.amountPaid;
@@ -579,14 +621,21 @@ export const VisitService = {
       invoice.paymentStatus = 'pending';
     }
 
-    await invoice.save();
+    await invoice.save({ session });
 
     if (!visit.invoiceId) {
       visit.invoiceId = invoice._id;
-      await visit.save();
+      await visit.save({ session });
     }
 
-    return { visit, invoice };
+      await session.commitTransaction();
+      return { visit, invoice };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   }
 };
 

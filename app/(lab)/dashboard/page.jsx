@@ -8,6 +8,7 @@ import KpiCard from '@/components/shared/KpiCard';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
 import { useAuthStore } from '@/lib/stores/auth.store';
+import OnboardingChecklist from './OnboardingChecklist';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
@@ -175,6 +176,9 @@ export default function DashboardPage() {
           </Button>
         }
       />
+
+      {/* Onboarding Wizard (only shows for owners of new labs) */}
+      <OnboardingChecklist userRole={user?.roles?.[0] || 'staff'} />
 
       {/* WhatsApp Outbox Shortcut Banner */}
       {readyOutboxCount > 0 && (

@@ -3,6 +3,7 @@ import Doctor from './doctor.model.js';
 import Commission from './commission.model.js';
 import Visit from '../visits/visit.model.js';
 import Report from '../reports/report.model.js';
+import Lab from '../staff/lab.model.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
 import { AppError } from '../../utils/errors.js';
 
@@ -147,6 +148,11 @@ export const DoctorController = {
         throw new AppError('Doctor record not found for this user', 'DOCTOR_NOT_FOUND', 404);
       }
 
+      const lab = await Lab.findById(doctor.labId).select('planConfig').lean();
+      if (!lab?.planConfig?.features?.doctorPortalAccess) {
+        throw new AppError('Doctor portal access is not enabled for this lab', 'FEATURE_LOCKED', 403);
+      }
+
       const visits = await Visit.find({ referredBy: doctor._id })
         .populate('patientId', 'firstName lastName phone')
         .populate('tests', 'name')
@@ -182,6 +188,11 @@ export const DoctorController = {
       const doctor = await Doctor.findOne({ userId: req.user.userId });
       if (!doctor) {
         throw new AppError('Doctor record not found for this user', 'DOCTOR_NOT_FOUND', 404);
+      }
+
+      const lab = await Lab.findById(doctor.labId).select('planConfig').lean();
+      if (!lab?.planConfig?.features?.doctorPortalAccess) {
+        throw new AppError('Doctor portal access is not enabled for this lab', 'FEATURE_LOCKED', 403);
       }
 
       const commissions = await Commission.find({ doctorId: doctor._id, isDeleted: false })

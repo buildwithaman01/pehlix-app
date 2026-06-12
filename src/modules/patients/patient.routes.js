@@ -25,6 +25,7 @@ router.use(authorize('owner', 'receptionist'));
 router.get('/', generalRateLimit, validateRequest(searchPatientSchema), PatientController.getPatients);
 router.post('/', validateRequest(createPatientSchema), PatientController.createPatient);
 router.get('/search', validateRequest(searchPatientSchema), PatientController.searchPatients);
+router.get('/export', generalRateLimit, authorize('owner'), PatientController.exportPatients);
 router.get('/autofill', PatientController.autoFill);
 router.get('/:id', PatientController.getPatientById);
 router.put('/:id', validateRequest(updatePatientSchema), PatientController.updatePatient);

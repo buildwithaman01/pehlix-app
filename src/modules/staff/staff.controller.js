@@ -44,6 +44,23 @@ export const StaffController = {
         return sendError(res, 'VALIDATION_FAILED', 'Missing required fields (name, phone, roles, password)', {}, 400);
       }
 
+      // Check plan limits
+      const lab = await User.db.model('Lab').findById(labId).select('planConfig').lean();
+      const staffLimit = lab?.planConfig?.limits?.staffCount;
+      if (staffLimit) {
+        // Count active staff for this lab
+        const staffRolesList = ['receptionist', 'technician', 'pathologist', 'phlebotomist'];
+        const currentStaffCount = await User.countDocuments({
+          labId,
+          roles: { $in: staffRolesList },
+          isActive: true
+        });
+
+        if (currentStaffCount >= staffLimit) {
+          return sendError(res, 'PLAN_LIMIT_EXCEEDED', `Staff count limit exceeded (${staffLimit}). Please upgrade your plan to add more staff.`, {}, 403);
+        }
+      }
+
       // Check if user already exists with phone or email using blind indexes
       const phoneBlind = calculateBlindIndex(phone, 'phone');
       const emailBlind = email ? calculateBlindIndex(email, 'email') : null;

@@ -9,7 +9,7 @@ export const scanBarcodeSchema = z.object({
 
 export const updateSampleStatusSchema = z.object({
   body: z.object({
-    status: z.enum(['pending', 'collected', 'in_transit', 'received', 'processing', 'stored', 'rejected', 'disposed']),
+    status: z.preprocess((val) => (typeof val === 'string' ? val.toLowerCase() : val), z.enum(['pending', 'collected', 'in_transit', 'received', 'processing', 'stored', 'rejected', 'disposed'])),
     notes: z.string().optional(),
     storageLocation: z.string().optional()
   })

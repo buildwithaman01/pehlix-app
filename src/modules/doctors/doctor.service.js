@@ -226,11 +226,12 @@ export const DoctorService = {
   /**
    * Calculates and records commission. Idempotent check prevents double recording.
    */
-  async calculateAndRecordCommission(labId, visitId, invoiceId, paidAmount) {
-    const visit = await Visit.findOne({ _id: visitId, labId });
+  async calculateAndRecordCommission(labId, visitId, invoiceId, paidAmount, session = null) {
+    const queryOptions = session ? { session } : {};
+    const visit = await Visit.findOne({ _id: visitId, labId }).session(session || null);
     if (!visit || !visit.referredBy) return null;
 
-    const doctor = await Doctor.findOne({ _id: visit.referredBy, labId });
+    const doctor = await Doctor.findOne({ _id: visit.referredBy, labId }).session(session || null);
     if (!doctor) return null;
 
     if (doctor.commissionType === 'none' || doctor.commissionValue === 0) {
@@ -238,7 +239,7 @@ export const DoctorService = {
     }
 
     // Idempotency: check if a Commission record already exists for this visit
-    const existingCommission = await Commission.findOne({ labId, visitId });
+    const existingCommission = await Commission.findOne({ labId, visitId }).session(session || null);
     if (existingCommission) return existingCommission;
 
     let commissionAmount = 0;
@@ -252,7 +253,7 @@ export const DoctorService = {
     const month = now.getMonth() + 1; // 1-12
     const year = now.getFullYear();
 
-    const commission = await Commission.create({
+    const commission = await Commission.create([{
       labId,
       doctorId: doctor._id,
       visitId,
@@ -265,10 +266,11 @@ export const DoctorService = {
       month,
       year,
       status: 'pending'
-    });
+    }], queryOptions);
 
-    return commission;
+    return Array.isArray(commission) ? commission[0] : commission;
   },
+
 
   /**
    * Retrieves commission records grouped by status.

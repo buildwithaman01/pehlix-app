@@ -112,6 +112,45 @@ invoiceSchema.pre('save', function() {
   }
 });
 
+// Keep balanceAmount consistent on partial-payment updates too
+invoiceSchema.pre('findOneAndUpdate', function() {
+  const update = this.getUpdate();
+  const set = update?.$set || update;
+  if (set && set.totalAmount !== undefined && set.amountPaid !== undefined) {
+    const target = update.$set ? update.$set : update;
+    target.balanceAmount = set.totalAmount - set.amountPaid;
+  }
+});
+
+// ─── Soft-delete filter middleware (AD-004 fix) ───────────────────────────
+// Auto-exclude soft-deleted invoices from all reads UNLESS the caller
+// explicitly sets { isDeleted: true } (e.g., admin audit).
+invoiceSchema.pre('find', function () {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
+
+invoiceSchema.pre('findOne', function () {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
+
+invoiceSchema.pre('countDocuments', function () {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
+
+// ─── Compound indexes (AD-005 fix) ───────────────────────────────────────
+// Billing dashboard: pending balance query sorted by date
+invoiceSchema.index({ labId: 1, paymentStatus: 1 });
+// Billing history: paginated list by date
+invoiceSchema.index({ labId: 1, createdAt: -1 });
+// Per-patient invoice lookup
+invoiceSchema.index({ labId: 1, patientId: 1, createdAt: -1 });
+
 const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', invoiceSchema);
 export default Invoice;
 export { Invoice };

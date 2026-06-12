@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/sonner';
@@ -8,6 +9,7 @@ import { useAuthStore } from '@/lib/stores/auth.store';
 import { apiClient } from '@/lib/api/client';
 
 export default function Providers({ children }) {
+  const pathname = usePathname();
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -60,6 +62,23 @@ export default function Providers({ children }) {
     }
     restoreSession();
   }, [setUser, clearUser, setInitialized]);
+
+  // Mid-session refresh for planConfig updates
+  useEffect(() => {
+    const isAuth = useAuthStore.getState().isAuthenticated;
+    if (isAuth && pathname && !pathname.startsWith('/login') && !pathname.startsWith('/portal')) {
+      const currentToken = useAuthStore.getState().accessToken;
+      if (currentToken) {
+        apiClient.get('/auth/me').then(res => {
+          if (res.data?.data?.user) {
+            setUser(res.data.data.user, currentToken);
+          }
+        }).catch(err => {
+          console.error('[Session Refresh] Failed to refresh user data', err);
+        });
+      }
+    }
+  }, [pathname, setUser]);
 
   return (
     <QueryClientProvider client={queryClient}>

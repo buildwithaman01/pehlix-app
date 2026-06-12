@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import {
@@ -328,16 +329,32 @@ export default function ResultsPage() {
                         </div>
                       </div>
                       <div className="flex gap-2 items-center">
-                        <Input
-                          type="text"
-                          value={resultValues[param.name] || ''}
-                          onChange={e => handleValueChange(param.name, e.target.value)}
-                          placeholder="Enter value"
-                          className={cn(
-                            'h-10 rounded-lg font-mono flex-1',
-                            flag && flagStyle(flag)
-                          )}
-                        />
+                        {param.options && param.options.length > 0 ? (
+                          <Select 
+                            value={resultValues[param.name] || ''} 
+                            onValueChange={val => handleValueChange(param.name, val)}
+                          >
+                            <SelectTrigger className={cn("h-10 rounded-lg flex-1", flag && flagStyle(flag))}>
+                              <SelectValue placeholder="Select value" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {param.options.map(opt => (
+                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            type="text"
+                            value={resultValues[param.name] || ''}
+                            onChange={e => handleValueChange(param.name, e.target.value)}
+                            placeholder="Enter value"
+                            className={cn(
+                              'h-10 rounded-lg font-mono flex-1',
+                              flag && flagStyle(flag)
+                            )}
+                          />
+                        )}
                         {param.unit && (
                           <span className="text-sm text-neutral-400 font-medium shrink-0 w-12 text-right">{param.unit}</span>
                         )}

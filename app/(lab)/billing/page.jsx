@@ -318,7 +318,21 @@ export default function BillingPage() {
 
   return (
     <div>
-      <PageHeader title="Billing & Payments" subtitle="Manage invoices and payment collection" />
+      <PageHeader 
+        title="Billing & Payments" 
+        subtitle="Manage invoices and payment collection" 
+        action={
+          <Button
+            variant="outline"
+            onClick={() => {
+              window.open(`${process.env.NEXT_PUBLIC_API_URL || '/api'}/invoices/export`, '_blank');
+            }}
+            className="rounded-xl border-[#0F3D3E]/20 text-[#0F3D3E] hover:bg-[#0F3D3E]/5 gap-1.5 font-semibold"
+          >
+            Export CSV
+          </Button>
+        }
+      />
 
       <Tabs defaultValue="invoices">
         <TabsList className="rounded-xl bg-neutral-100 p-1 mb-5">

@@ -110,6 +110,31 @@ const resultSchema = new mongoose.Schema({
 // Indexes for common queries
 resultSchema.index({ labId: 1, visitId: 1 });
 resultSchema.index({ labId: 1, testId: 1 });
+// AD-005: Work queue — pending/unapproved results by lab
+resultSchema.index({ labId: 1, isApproved: 1, createdAt: -1 });
+// AD-005: Critical value alert queue
+resultSchema.index({ labId: 1, isCritical: 1, createdAt: -1 });
+
+// ─── Soft-delete filter middleware (AD-004 fix) ───────────────────────────
+// Auto-exclude soft-deleted results from all reads UNLESS the caller
+// explicitly sets { isDeleted: true } (e.g., audit recovery).
+resultSchema.pre('find', function () {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
+
+resultSchema.pre('findOne', function () {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
+
+resultSchema.pre('countDocuments', function () {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
 
 const Result = mongoose.models.Result || mongoose.model('Result', resultSchema);
 export default Result;

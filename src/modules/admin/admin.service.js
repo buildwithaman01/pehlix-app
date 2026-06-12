@@ -744,7 +744,12 @@ export const AdminService = {
     }
 
     await PdfService.enqueuePdfJob(report.visitId, report.labId, report._id, 100);
+    // Reset attempts counter so the watchdog doesn't immediately re-fail this report.
+    // Without this, a report that exhausted 3 attempts would be picked up by the
+    // pdf-watchdog's exhausted-retry query and marked failed again seconds later.
     report.status = 'pending';
+    report.generationAttempts = 0;
+    report.lastFailureReason = null;
     await report.save();
 
     await AuditLog.create({

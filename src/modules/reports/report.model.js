@@ -122,6 +122,31 @@ const reportSchema = new mongoose.Schema({
 
 // Indexes
 reportSchema.index({ labId: 1, visitId: 1 });
+// AD-005: Approval queue — reports sorted by status + date (most queried)
+reportSchema.index({ labId: 1, status: 1, createdAt: -1 });
+// AD-005: PDF watchdog — find reports stuck in 'generating' state
+reportSchema.index({ labId: 1, status: 1, generatedAt: 1 });
+
+// ─── Soft-delete filter middleware (AD-004 fix) ───────────────────────────
+// Auto-exclude soft-deleted reports from all reads UNLESS the caller
+// explicitly sets { isDeleted: true } (e.g., admin audit or recovery).
+reportSchema.pre('find', function () {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
+
+reportSchema.pre('findOne', function () {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
+
+reportSchema.pre('countDocuments', function () {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
 
 const Report = mongoose.models.Report || mongoose.model('Report', reportSchema);
 export default Report;

@@ -13,7 +13,14 @@ app.set('trust proxy', true);
 
 // Standard middleware in the exact requested order:
 // 1. express.json()
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    // Save raw body for QStash webhook signature verification
+    if (req.originalUrl && req.originalUrl.includes('/internal/pdf')) {
+      req.rawBody = buf.toString('utf-8');
+    }
+  }
+}));
 
 // 2. express.urlencoded()
 app.use(express.urlencoded({ extended: true }));

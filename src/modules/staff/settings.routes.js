@@ -14,5 +14,6 @@ router.use(authorize('owner'));
 router.get('/', SettingsController.getSettings);
 router.put('/', SettingsController.updateSettings);
 router.patch('/', SettingsController.updateSettings);
+router.get('/onboarding-status', SettingsController.getOnboardingStatus);
 
 export default router;

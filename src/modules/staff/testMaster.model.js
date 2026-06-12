@@ -49,6 +49,10 @@ const testParameterSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  options: [{
+    type: String,
+    trim: true
+  }],
   // Age/gender-specific reference ranges (Phase 3.4)
   referenceRanges: [referenceRangeSchema]
 }, { _id: false });

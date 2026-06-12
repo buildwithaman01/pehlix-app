@@ -241,6 +241,49 @@ export const PatientController = {
       next(error);
     }
   }
+  /**
+   * Export patients to CSV format.
+   * Owner role only.
+   */
+  async exportPatients(req, res, next) {
+    try {
+      const labId = req.user.labId;
+      const patients = await Patient.find({ labId, isDeleted: { $ne: true } })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      // Log the export action (Audit)
+      // Dynamic import to avoid circular dep
+      const { default: Audit } = await import('../audit/audit.model.js');
+      await Audit.create({
+        labId,
+        action: 'exported',
+        entityType: 'export',
+        performedBy: req.user.userId,
+        details: { count: patients.length, type: 'patients' }
+      });
+
+      // Simple CSV generation
+      const headers = ['ID', 'First Name', 'Last Name', 'Phone', 'Gender', 'Age', 'Created At'];
+      const rows = patients.map(p => [
+        p._id.toString(),
+        `"${p.firstName || ''}"`,
+        `"${p.lastName || ''}"`,
+        `"${p.phone || ''}"`,
+        `"${p.gender || ''}"`,
+        `"${p.age || ''}"`,
+        `"${new Date(p.createdAt).toISOString()}"`
+      ]);
+
+      const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=patients_export_${new Date().getTime()}.csv`);
+      return res.status(200).send(csvContent);
+    } catch (error) {
+      next(error);
+    }
+  }
 };
 
 export default PatientController;

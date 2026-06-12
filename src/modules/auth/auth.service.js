@@ -228,6 +228,51 @@ const AuthService = {
 
     await user.save();
     return isNewDevice;
+  },
+
+  /**
+   * Stores a short-lived (5-minute) password reset OTP in Redis.
+   * Key: `pwreset:otp:{email}`
+   */
+  async storePasswordResetOtp(email, otp) {
+    await redis.set(`pwreset:otp:${email}`, otp, { ex: 300 }); // 5 minutes
+  },
+
+  /**
+   * Verifies the password reset OTP and, on success, stores a reset token.
+   * Returns the reset token (a random 32-byte hex string).
+   * Key: `pwreset:token:{token}` → value is the email (TTL 5 min).
+   */
+  async verifyPasswordResetOtp(email, inputOtp) {
+    if (process.env.NODE_ENV !== 'production' && inputOtp === '123456') {
+      // Dev bypass — any code works in dev
+    } else {
+      const storedOtp = await redis.get(`pwreset:otp:${email}`);
+      if (!storedOtp) {
+        throw new AppError('OTP has expired or is invalid. Please request a new one.', 'RESET_OTP_EXPIRED', 400);
+      }
+      if (String(storedOtp) !== String(inputOtp)) {
+        throw new AppError('Invalid OTP. Please check and try again.', 'RESET_OTP_INVALID', 400);
+      }
+    }
+    // OTP verified — generate a one-time reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    await redis.set(`pwreset:token:${resetToken}`, email, { ex: 300 }); // 5 minutes to use token
+    await redis.del(`pwreset:otp:${email}`); // Invalidate OTP immediately
+    return resetToken;
+  },
+
+  /**
+   * Consumes a password reset token. Returns the email associated with it.
+   * Deletes the token from Redis so it can only be used once.
+   */
+  async consumePasswordResetToken(token) {
+    const email = await redis.get(`pwreset:token:${token}`);
+    if (!email) {
+      throw new AppError('Password reset link has expired or already been used.', 'RESET_TOKEN_INVALID', 400);
+    }
+    await redis.del(`pwreset:token:${token}`);
+    return email;
   }
 };
 

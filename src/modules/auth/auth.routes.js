@@ -27,5 +27,13 @@ router.post('/set-password', authenticate, AuthController.setPassword);
 // Laboratory self-registration route (public)
 router.post('/register-lab', validateRequest(registerLabSchema), AuthController.registerLab);
 
+// --- Password Reset Flow (self-service, public routes) ---
+// Step 1: Request OTP to email
+router.post('/forgot-password', loginRateLimit, AuthController.forgotPassword);
+// Step 2: Verify OTP → returns one-time reset token
+router.post('/verify-reset-otp', loginRateLimit, AuthController.verifyResetOtp);
+// Step 3: Set new password using reset token
+router.post('/reset-password', loginRateLimit, AuthController.resetPassword);
+
 export default router;
 export { router as authRouter };

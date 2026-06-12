@@ -74,9 +74,33 @@ const visitSchema = new mongoose.Schema({
     approvedAt: { type: Date },
     reportedAt: { type: Date },
     deliveredAt: { type: Date }
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    required: true
   }
 }, {
   timestamps: true
+});
+
+// Soft-delete filter middleware
+visitSchema.pre('find', function() {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
+
+visitSchema.pre('findOne', function() {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
+
+visitSchema.pre('countDocuments', function() {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
 });
 
 // Indexes

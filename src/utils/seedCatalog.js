@@ -134,8 +134,8 @@ const CORE_PANELS = [
     container: 'Urine Container',
     basePrice: 150,
     parameters: [
-      { name: 'Sugar (Urine)', unit: 'status', normalLow: 0, normalHigh: 0 },
-      { name: 'Protein (Urine)', unit: 'status', normalLow: 0, normalHigh: 0 },
+      { name: 'Sugar (Urine)', unit: 'status', options: ['Nil', 'Trace', '+1', '+2', '+3', '+4'] },
+      { name: 'Protein (Urine)', unit: 'status', options: ['Nil', 'Trace', '+1', '+2', '+3'] },
       { name: 'Pus Cells', unit: '/hpf', normalLow: 0, normalHigh: 5 },
       { name: 'Epithelial Cells', unit: '/hpf', normalLow: 0, normalHigh: 5 },
       { name: 'RBCs', unit: '/hpf', normalLow: 0, normalHigh: 2 }
@@ -182,7 +182,7 @@ const CORE_PANELS = [
     container: 'Clot Activator Tube (Yellow)',
     basePrice: 600,
     parameters: [
-      { name: 'Dengue NS1 Antigen', unit: 'status', normalLow: 0, normalHigh: 0 }
+      { name: 'Dengue NS1 Antigen', unit: 'status', options: ['Positive', 'Negative'] }
     ]
   },
   {
@@ -193,8 +193,8 @@ const CORE_PANELS = [
     container: 'Clot Activator Tube (Yellow)',
     basePrice: 800,
     parameters: [
-      { name: 'Dengue IgM', unit: 'status', normalLow: 0, normalHigh: 0 },
-      { name: 'Dengue IgG', unit: 'status', normalLow: 0, normalHigh: 0 }
+      { name: 'Dengue IgM', unit: 'status', options: ['Positive', 'Negative'] },
+      { name: 'Dengue IgG', unit: 'status', options: ['Positive', 'Negative'] }
     ]
   },
   {
@@ -283,7 +283,7 @@ const CORE_PANELS = [
     container: 'Clot Activator Tube (Yellow)',
     basePrice: 350,
     parameters: [
-      { name: 'HBsAg', unit: 'status', normalLow: 0, normalHigh: 0 }
+      { name: 'HBsAg', unit: 'status', options: ['Reactive', 'Non-Reactive'] }
     ]
   },
   {
@@ -294,7 +294,7 @@ const CORE_PANELS = [
     container: 'Clot Activator Tube (Yellow)',
     basePrice: 500,
     parameters: [
-      { name: 'HCV Antibody', unit: 'status', normalLow: 0, normalHigh: 0 }
+      { name: 'HCV Antibody', unit: 'status', options: ['Reactive', 'Non-Reactive'] }
     ]
   },
   {
@@ -305,7 +305,7 @@ const CORE_PANELS = [
     container: 'Clot Activator Tube (Yellow)',
     basePrice: 450,
     parameters: [
-      { name: 'HIV 1 & 2', unit: 'status', normalLow: 0, normalHigh: 0 }
+      { name: 'HIV 1 & 2', unit: 'status', options: ['Reactive', 'Non-Reactive'] }
     ]
   },
   {
@@ -316,7 +316,7 @@ const CORE_PANELS = [
     container: 'Clot Activator Tube (Yellow)',
     basePrice: 200,
     parameters: [
-      { name: 'VDRL Slide Test', unit: 'status', normalLow: 0, normalHigh: 0 }
+      { name: 'VDRL Slide Test', unit: 'status', options: ['Reactive', 'Non-Reactive'] }
     ]
   },
   {
@@ -352,7 +352,7 @@ const CORE_PANELS = [
     container: 'Urine Container',
     basePrice: 100,
     parameters: [
-      { name: 'Pregnancy Test', unit: 'status', normalLow: 0, normalHigh: 0 }
+      { name: 'Pregnancy Test', unit: 'status', options: ['Positive', 'Negative'] }
     ]
   },
   {
@@ -478,11 +478,11 @@ const HEMATOLOGY_AND_COAG = [
   { name: 'Absolute Monocyte Count (AMC)', code: 'AMC', unit: '/cumm', low: 200, high: 950, price: 200, dept: 'Hematology', sample: 'Whole Blood', container: 'EDTA Tube (Purple)' },
   { name: 'Absolute Basophil Count (ABC)', code: 'ABC', unit: '/cumm', low: 20, high: 100, price: 200, dept: 'Hematology', sample: 'Whole Blood', container: 'EDTA Tube (Purple)' },
   { name: 'Reticulocyte Count', code: 'RETICULOCYTE', unit: '%', low: 0.5, high: 2.0, price: 250, dept: 'Hematology', sample: 'Whole Blood', container: 'EDTA Tube (Purple)' },
-  { name: 'G6PD Activity Qualitative Screen', code: 'G6PD-QUAL', unit: 'status', low: 0, high: 0, price: 350, dept: 'Hematology', sample: 'Whole Blood', container: 'EDTA Tube (Purple)' },
-  { name: 'Hb Electrophoresis (Hemoglobin Typing)', code: 'HB-ELECTROPHORESIS', unit: 'status', low: 0, high: 0, price: 1200, dept: 'Hematology', sample: 'Whole Blood', container: 'EDTA Tube (Purple)' },
-  { name: 'Coombs Test Direct (DAT)', code: 'COOMBS-DIRECT', unit: 'status', low: 0, high: 0, price: 450, dept: 'Hematology', sample: 'Whole Blood', container: 'EDTA Tube (Purple)' },
-  { name: 'Coombs Test Indirect (IAT)', code: 'COOMBS-INDIRECT', unit: 'status', low: 0, high: 0, price: 550, dept: 'Hematology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
-  { name: 'Sickling Test (HbS Screening)', code: 'SICKLING-TEST', unit: 'status', low: 0, high: 0, price: 250, dept: 'Hematology', sample: 'Whole Blood', container: 'EDTA Tube (Purple)' },
+  { name: 'G6PD Activity Qualitative Screen', code: 'G6PD-QUAL', unit: 'status', options: ['Deficient', 'Intermediate', 'Normal'], low: 0, high: 0, price: 350, dept: 'Hematology', sample: 'Whole Blood', container: 'EDTA Tube (Purple)' },
+  { name: 'Hb Electrophoresis (Hemoglobin Typing)', code: 'HB-ELECTROPHORESIS', unit: 'status', options: ['Normal HbAA', 'HbAS (Sickle Trait)', 'HbSS (Sickle Disease)', 'HbSC', 'HbAC', 'HbC Trait', 'Other Hemoglobinopathy'], low: 0, high: 0, price: 1200, dept: 'Hematology', sample: 'Whole Blood', container: 'EDTA Tube (Purple)' },
+  { name: 'Coombs Test Direct (DAT)', code: 'COOMBS-DIRECT', unit: 'status', options: ['Positive', 'Negative', 'Weakly Positive'], low: 0, high: 0, price: 450, dept: 'Hematology', sample: 'Whole Blood', container: 'EDTA Tube (Purple)' },
+  { name: 'Coombs Test Indirect (IAT)', code: 'COOMBS-INDIRECT', unit: 'status', options: ['Positive', 'Negative', 'Weakly Positive'], low: 0, high: 0, price: 550, dept: 'Hematology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
+  { name: 'Sickling Test (HbS Screening)', code: 'SICKLING-TEST', unit: 'status', options: ['Positive', 'Negative'], low: 0, high: 0, price: 250, dept: 'Hematology', sample: 'Whole Blood', container: 'EDTA Tube (Purple)' },
   { name: 'Osmotic Fragility Test', code: 'OSMOTIC-FRAGILITY', unit: 'status', low: 0, high: 0, price: 800, dept: 'Hematology', sample: 'Whole Blood', container: 'EDTA Tube (Purple)' },
   { name: 'Marrow Iron Stain', code: 'MARROW-IRON', unit: 'status', low: 0, high: 0, price: 1500, dept: 'Hematology', sample: 'Biopsy Tissue', container: 'Formalin Container' },
   { name: 'LE Cells (Lupus Erythematosus)', code: 'LE-CELLS', unit: 'status', low: 0, high: 0, price: 500, dept: 'Hematology', sample: 'Whole Blood', container: 'EDTA Tube (Purple)' },
@@ -501,12 +501,12 @@ const HEMATOLOGY_AND_COAG = [
   { name: 'Total Immunoglobulin G (IgG)', code: 'IGG-TOTAL', unit: 'mg/dL', low: 700, high: 1600, price: 800, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
   { name: 'Total Immunoglobulin A (IgA)', code: 'IGA-TOTAL', unit: 'mg/dL', low: 70, high: 400, price: 800, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
   { name: 'Total Immunoglobulin M (IgM)', code: 'IGM-TOTAL', unit: 'mg/dL', low: 40, high: 230, price: 800, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
-  { name: 'Typhoid IgM Antibody Rapid', code: 'TYPHIPHY-IGM', unit: 'status', low: 0, high: 0, price: 350, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
-  { name: 'Typhoid IgG Antibody Rapid', code: 'TYPHIPHY-IGG', unit: 'status', low: 0, high: 0, price: 350, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
-  { name: 'Leptospira IgM Antibody ELISA', code: 'LEPTO-IGM', unit: 'status', low: 0, high: 0, price: 950, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
-  { name: 'Scrub Typhus IgM Antibody ELISA', code: 'SCRUB-IGM', unit: 'status', low: 0, high: 0, price: 950, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
-  { name: 'Brucella Antibody Slide Agglutination', code: 'BRUCELLA', unit: 'status', low: 0, high: 0, price: 400, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
-  { name: 'Chikungunya IgM Antibody ELISA', code: 'CHIK-IGM', unit: 'status', low: 0, high: 0, price: 850, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
+  { name: 'Typhoid IgM Antibody Rapid', code: 'TYPHIPHY-IGM', unit: 'status', options: ['Positive', 'Negative'], low: 0, high: 0, price: 350, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
+  { name: 'Typhoid IgG Antibody Rapid', code: 'TYPHIPHY-IGG', unit: 'status', options: ['Positive', 'Negative'], low: 0, high: 0, price: 350, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
+  { name: 'Leptospira IgM Antibody ELISA', code: 'LEPTO-IGM', unit: 'status', options: ['Reactive', 'Non-Reactive'], low: 0, high: 0, price: 950, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
+  { name: 'Scrub Typhus IgM Antibody ELISA', code: 'SCRUB-IGM', unit: 'status', options: ['Reactive', 'Non-Reactive'], low: 0, high: 0, price: 950, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
+  { name: 'Brucella Antibody Slide Agglutination', code: 'BRUCELLA', unit: 'status', options: ['Positive', 'Negative'], low: 0, high: 0, price: 400, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
+  { name: 'Chikungunya IgM Antibody ELISA', code: 'CHIK-IGM', unit: 'status', options: ['Reactive', 'Non-Reactive'], low: 0, high: 0, price: 850, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
   { name: 'Anti-HBs Antibody Quantitative', code: 'ANTIHBS-QUANT', unit: 'mIU/mL', low: 10, high: 1000, price: 750, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
   { name: 'HBeAg (Hepatitis B e Antigen)', code: 'HBEAG', unit: 'status', normalLow: 0, normalHigh: 0, price: 800, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
   { name: 'Anti-HBe Antibody', code: 'ANTIHBE', unit: 'status', normalLow: 0, normalHigh: 0, price: 850, dept: 'Serology', sample: 'Serum', container: 'Clot Activator Tube (Yellow)' },
@@ -522,12 +522,12 @@ const HEMATOLOGY_AND_COAG = [
   { name: 'Semen Fructose Qualitative', code: 'SEMEN-FRUCTOSE', unit: 'status', normalLow: 0, normalHigh: 0, price: 450, dept: 'Biochemistry', sample: 'Semen', container: 'Sterile Container' },
   { name: 'Semen pH Level', code: 'SEMEN-PH', unit: 'ratio', normalLow: 7.2, normalHigh: 8.0, price: 200, dept: 'Biochemistry', sample: 'Semen', container: 'Sterile Container' },
   { name: 'Semen Total Sperm Count', code: 'SEMEN-COUNT', unit: 'million/mL', normalLow: 15, normalHigh: 150, price: 300, dept: 'Hematology', sample: 'Semen', container: 'Sterile Container' },
-  { name: 'Stool Routine and Microscopic', code: 'STOOL-ROUTINE', unit: 'status', normalLow: 0, normalHigh: 0, price: 180, dept: 'Urinalysis', sample: 'Urine', container: 'Urine Container' },
-  { name: 'Stool Occult Blood (FOBT)', code: 'STOOL-OCCULT', unit: 'status', normalLow: 0, normalHigh: 0, price: 250, dept: 'Urinalysis', sample: 'Urine', container: 'Urine Container' },
-  { name: 'Stool Reducing Substances', code: 'STOOL-REDUCING', unit: 'status', normalLow: 0, normalHigh: 0, price: 200, dept: 'Urinalysis', sample: 'Urine', container: 'Urine Container' },
-  { name: 'Sputum AFB Smear Stain', code: 'SPUTUM-AFB', unit: 'status', normalLow: 0, normalHigh: 0, price: 200, dept: 'Microbiology', sample: 'Sputum', container: 'Sterile Container' },
-  { name: 'Gram Stain Smear Examination', code: 'GRAM-STAIN', unit: 'status', normalLow: 0, normalHigh: 0, price: 200, dept: 'Microbiology', sample: 'Pus', container: 'Sterile Container' },
-  { name: 'KOH Mount for Fungal Hyphae', code: 'KOH-MOUNT', unit: 'status', normalLow: 0, normalHigh: 0, price: 200, dept: 'Microbiology', sample: 'Pus', container: 'Sterile Container' },
+  { name: 'Stool Routine and Microscopic', code: 'STOOL-ROUTINE', unit: 'status', options: ['Normal', 'Abnormal'], normalLow: 0, normalHigh: 0, price: 180, dept: 'Urinalysis', sample: 'Urine', container: 'Urine Container' },
+  { name: 'Stool Occult Blood (FOBT)', code: 'STOOL-OCCULT', unit: 'status', options: ['Positive', 'Negative'], normalLow: 0, normalHigh: 0, price: 250, dept: 'Urinalysis', sample: 'Urine', container: 'Urine Container' },
+  { name: 'Stool Reducing Substances', code: 'STOOL-REDUCING', unit: 'status', options: ['Positive', 'Negative'], normalLow: 0, normalHigh: 0, price: 200, dept: 'Urinalysis', sample: 'Urine', container: 'Urine Container' },
+  { name: 'Sputum AFB Smear Stain', code: 'SPUTUM-AFB', unit: 'status', options: ['No AFB Seen', 'Scanty (1-9 AFB/100 HPF)', '1+ (10-99 AFB/100 HPF)', '2+ (1-10 AFB/HPF)', '3+ (>10 AFB/HPF)'], normalLow: 0, normalHigh: 0, price: 200, dept: 'Microbiology', sample: 'Sputum', container: 'Sterile Container' },
+  { name: 'Gram Stain Smear Examination', code: 'GRAM-STAIN', unit: 'status', options: ['Gram Positive Cocci', 'Gram Negative Cocci', 'Gram Positive Bacilli', 'Gram Negative Bacilli', 'Mixed Flora', 'No Organisms Seen'], normalLow: 0, normalHigh: 0, price: 200, dept: 'Microbiology', sample: 'Pus', container: 'Sterile Container' },
+  { name: 'KOH Mount for Fungal Hyphae', code: 'KOH-MOUNT', unit: 'status', options: ['Fungal Hyphae Seen', 'Yeast Cells Seen', 'No Fungal Elements Seen'], normalLow: 0, normalHigh: 0, price: 200, dept: 'Microbiology', sample: 'Pus', container: 'Sterile Container' },
   { name: 'Albert Stain for Diphtheria', code: 'ALBERT-STAIN', unit: 'status', normalLow: 0, normalHigh: 0, price: 250, dept: 'Microbiology', sample: 'Sputum', container: 'Sterile Container' },
   { name: 'Wet Mount vaginal smear', code: 'WET-MOUNT', unit: 'status', normalLow: 0, normalHigh: 0, price: 250, dept: 'Microbiology', sample: 'Pus', container: 'Sterile Container' },
   { name: 'G6PD Quantitative Enzyme Assay', code: 'G6PD-QUANT', unit: 'U/g Hb', normalLow: 4.6, normalHigh: 13.5, price: 950, dept: 'Hematology', sample: 'Whole Blood', container: 'EDTA Tube (Purple)' },

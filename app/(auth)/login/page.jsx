@@ -229,10 +229,7 @@ export default function LoginPage() {
                     <Label htmlFor="password" className="text-sm font-medium text-[#1E1E1E]">Password</Label>
                     <button
                       type="button"
-                      onClick={() => {
-                        setActiveTab('otp');
-                        toast.info('Enter your registered email or mobile to request an OTP and reset your password.');
-                      }}
+                      onClick={() => router.push('/forgot-password')}
                       className="text-xs text-[#0F3D3E] hover:underline font-medium"
                     >
                       Forgot Password?

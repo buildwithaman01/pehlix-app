@@ -129,6 +129,89 @@ export const SettingsController = {
       next(error);
     }
   }
+  /**
+   * GET /api/settings/onboarding-status
+   * Returns completion status of 7 key lab setup steps.
+   * Used by the OnboardingChecklist dashboard widget.
+   */
+  async getOnboardingStatus(req, res, next) {
+    try {
+      const labId = req.user.labId;
+      const lab = await Lab.findById(labId).select('name logo address nablNumber gstNumber reportHeader planConfig registrationState');
+      if (!lab) return sendError(res, 'LAB_NOT_FOUND', 'Lab not found', {}, 404);
+
+      // Dynamic imports to avoid circular dependencies
+      const { default: User } = await import('./user.model.js');
+      const { default: Patient } = await import('../patients/patient.model.js');
+      const { default: Doctor } = await import('../doctors/doctor.model.js');
+
+      const [staffCount, patientCount, doctorCount] = await Promise.all([
+        User.countDocuments({ labId, isActive: true, isDeleted: { $ne: true } }),
+        Patient.countDocuments({ labId, isDeleted: { $ne: true } }),
+        Doctor.countDocuments({ labId, isActive: true })
+      ]);
+
+      const steps = [
+        {
+          id: 'account_created',
+          label: 'Account Created',
+          done: true,
+          link: null
+        },
+        {
+          id: 'add_staff',
+          label: 'Add your first staff member',
+          done: staffCount > 1, // >1 because owner counts as 1
+          link: '/staff'
+        },
+        {
+          id: 'configure_settings',
+          label: 'Complete lab profile (name, address, phone)',
+          done: !!(lab.address?.city && lab.address?.state && lab.phone),
+          link: '/settings'
+        },
+        {
+          id: 'add_logo',
+          label: 'Upload lab logo for reports',
+          done: !!lab.logo,
+          link: '/settings'
+        },
+        {
+          id: 'first_patient',
+          label: 'Register your first patient',
+          done: patientCount > 0,
+          link: '/patients'
+        },
+        {
+          id: 'add_doctor',
+          label: 'Add a referring doctor (optional)',
+          done: doctorCount > 0,
+          link: '/doctors'
+        },
+        {
+          id: 'report_letterhead',
+          label: 'Configure report letterhead & footer',
+          done: !!(lab.reportHeader || lab.reportFooter),
+          link: '/settings'
+        }
+      ];
+
+      const completedCount = steps.filter(s => s.done).length;
+      const isFullyOnboarded = completedCount === steps.length;
+      const registrationState = lab.registrationState || 'sandbox';
+
+      return sendSuccess(res, {
+        steps,
+        completedCount,
+        totalSteps: steps.length,
+        percentComplete: Math.round((completedCount / steps.length) * 100),
+        isFullyOnboarded,
+        registrationState
+      }, 'Onboarding status retrieved');
+    } catch (error) {
+      next(error);
+    }
+  }
 };
 
 export default SettingsController;

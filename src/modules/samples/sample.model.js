@@ -118,6 +118,25 @@ const sampleSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Soft-delete filter middleware
+sampleSchema.pre('find', function() {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
+
+sampleSchema.pre('findOne', function() {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
+
+sampleSchema.pre('countDocuments', function() {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
+
 // Indexes
 // Compound index for status queries within a lab
 sampleSchema.index({ labId: 1, status: 1 });

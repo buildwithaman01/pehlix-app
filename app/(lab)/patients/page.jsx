@@ -150,6 +150,15 @@ export default function PatientsPage() {
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
+              onClick={() => {
+                window.open(`${process.env.NEXT_PUBLIC_API_URL || '/api'}/patients/export`, '_blank');
+              }}
+              className="rounded-xl border-[#0F3D3E]/20 text-[#0F3D3E] hover:bg-[#0F3D3E]/5 gap-1.5 font-semibold"
+            >
+              Export CSV
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => router.push('/visits/new')}
               className="rounded-xl border-[#0F3D3E]/20 text-[#0F3D3E] hover:bg-[#0F3D3E]/5 gap-1.5 font-semibold"
             >

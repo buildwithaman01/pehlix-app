@@ -158,11 +158,40 @@ patientSchema.pre('save', function () {
   }
 });
 
-// Pre-findOneAndUpdate hook to calculate blind indexes
+// ─── Soft-delete filter middleware (AD-004 fix) ───────────────────────────
+// Auto-exclude soft-deleted patients from all reads UNLESS the caller
+// explicitly sets { isDeleted: true } (e.g., admin recovery lookups).
+patientSchema.pre('find', function () {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
+
+patientSchema.pre('findOne', function () {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
+
+patientSchema.pre('countDocuments', function () {
+  if (this.getFilter().isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+});
+
+// Auto-stamp deletedAt when a soft-delete update is applied
 patientSchema.pre('findOneAndUpdate', function () {
   const update = this.getUpdate();
-  if (update) {
-    const set = update.$set || update;
+  const set = update?.$set || update;
+  if (set?.isDeleted === true && !set.deletedAt) {
+    if (update.$set) {
+      update.$set.deletedAt = new Date();
+    } else {
+      update.deletedAt = new Date();
+    }
+  }
+  // Also auto-stamp blind indexes on phone/email update
+  if (set) {
     if (set.phone !== undefined) {
       set.phoneBlindIndex = calculateBlindIndex(set.phone, 'phone');
     }

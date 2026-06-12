@@ -422,6 +422,100 @@ const AuthController = {
     } catch (error) {
       next(error);
     }
+  },
+
+  /**
+   * Step 1: Staff requests password reset — sends OTP to their registered email.
+   * POST /auth/forgot-password  { email }
+   */
+  async forgotPassword(req, res, next) {
+    try {
+      const { email } = req.body;
+      if (!email) throw new AppError('Email address is required.', 'VALIDATION_ERROR', 400);
+
+      // Look up the user — only staff (non-OTP-only users with passwords) can reset
+      const user = await User.findOne({ email, isDeleted: { $ne: true } }).select('firstName email isActive isSuspended');
+      
+      // Security: Always return success even if user not found (prevents email enumeration)
+      if (!user || !user.isActive || user.isSuspended) {
+        return sendSuccess(res, null, 'If that email is registered, you will receive a reset code shortly.');
+      }
+
+      const otp = AuthService.generateOtp();
+      await AuthService.storePasswordResetOtp(email, otp);
+
+      // Send OTP via email (same Resend integration as existing OTP flow)
+      await EmailService.sendEmail({
+        to: email,
+        subject: 'Pehlix — Password Reset Code',
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9fafb;border-radius:12px;">
+            <h2 style="color:#4f46e5;margin-bottom:8px;">Password Reset</h2>
+            <p style="color:#374151;">Hi ${user.firstName},</p>
+            <p style="color:#374151;">Your password reset code is:</p>
+            <div style="font-size:36px;font-weight:bold;letter-spacing:8px;text-align:center;padding:20px;background:#fff;border-radius:8px;margin:16px 0;color:#111827;">${otp}</div>
+            <p style="color:#6b7280;font-size:14px;">This code expires in <strong>5 minutes</strong>. If you did not request this, ignore this email.</p>
+            <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;"/>
+            <p style="color:#9ca3af;font-size:12px;">Pehlix · Lab Management System · pehlix.in</p>
+          </div>
+        `
+      });
+
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[RESET_OTP] ${email}: ${otp}`);
+      }
+
+      return sendSuccess(res, null, 'If that email is registered, you will receive a reset code shortly.');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Step 2: Verify OTP and get a one-time reset token.
+   * POST /auth/verify-reset-otp  { email, otp }
+   * Returns: { resetToken } — used in Step 3 as a URL param
+   */
+  async verifyResetOtp(req, res, next) {
+    try {
+      const { email, otp } = req.body;
+      if (!email || !otp) throw new AppError('Email and OTP are required.', 'VALIDATION_ERROR', 400);
+
+      const resetToken = await AuthService.verifyPasswordResetOtp(email, otp);
+      return sendSuccess(res, { resetToken }, 'OTP verified. You may now set a new password.');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Step 3: Set new password using the one-time reset token.
+   * POST /auth/reset-password  { token, newPassword }
+   */
+  async resetPassword(req, res, next) {
+    try {
+      const { token, newPassword } = req.body;
+      if (!token || !newPassword) throw new AppError('Reset token and new password are required.', 'VALIDATION_ERROR', 400);
+      if (newPassword.length < 8) throw new AppError('Password must be at least 8 characters long.', 'VALIDATION_ERROR', 400);
+
+      // Consume the token (validates + deletes it from Redis atomically)
+      const email = await AuthService.consumePasswordResetToken(token);
+
+      const user = await User.findOne({ email, isDeleted: { $ne: true } });
+      if (!user) throw new AppError('User account not found.', 'NOT_FOUND', 404);
+
+      // Hash and save new password
+      const saltRounds = 12;
+      user.passwordHash = await bcrypt.hash(newPassword, saltRounds);
+      user.isOtpOnly = false;
+      // Invalidate all existing sessions by bumping token version
+      user.tokenVersion = (user.tokenVersion || 0) + 1;
+      await user.save();
+
+      return sendSuccess(res, null, 'Password has been reset successfully. Please log in with your new password.');
+    } catch (error) {
+      next(error);
+    }
   }
 };
 

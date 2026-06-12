@@ -41,7 +41,17 @@ class PublicService {
 
     // FIX-F-002: patient.phone is AES-encrypted in DB. Must use blind index for lookup.
     const phoneBlindIndex = calculateBlindIndex(patientData.phone, 'phone');
-    let patient = await Patient.findOne({ labId, phoneBlindIndex });
+    
+    // Check if a patient exists with the same phone AND same first name (case-insensitive)
+    // This allows family members sharing a phone to have separate profiles.
+    // IMPORTANT: escape regex special chars to prevent ReDoS on names like O'Brien, A.K. Singh
+    const escapedFirstName = patientData.firstName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let patient = await Patient.findOne({ 
+      labId, 
+      phoneBlindIndex,
+      firstName: new RegExp(`^${escapedFirstName}$`, 'i')
+    });
+    
     if (!patient) {
       const genderMap = { 'M': 'male', 'F': 'female', 'O': 'other', 'male': 'male', 'female': 'female', 'other': 'other' };
       const mappedGender = patientData.gender ? (genderMap[patientData.gender] || patientData.gender.toLowerCase()) : 'other';
