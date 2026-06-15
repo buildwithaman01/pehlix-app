@@ -17,7 +17,7 @@ const metaApiBreaker = new CircuitBreaker({
 const TEMPLATE_VAR_MAP = {
   booking_confirmation: ['patientName', 'testList', 'totalAmount', 'expectedReportTime', 'labName'],
   sample_collected: ['patientName', 'labName', 'expectedReportTime'],
-  report_ready_paid: ['patientName', 'reportLink', 'labName', 'reportCode'],
+  report_ready_paid: ['patientName', 'labName', 'reportCode'],
   report_ready_unpaid: ['patientName', 'pendingAmount', 'paymentLink', 'labName'],
   payment_received: ['patientName', 'amount', 'reportLink', 'labName'],
   payment_reminder_d1: ['patientName', 'pendingAmount', 'paymentLink', 'labName'],
@@ -155,27 +155,49 @@ export const WhatsAppService = {
       text: String(variables[key] !== undefined ? variables[key] : '')
     }));
 
+    const components = [
+      {
+        type: 'body',
+        parameters
+      }
+    ];
+
+    if (templateName === 'report_ready_paid' && variables.reportLink) {
+      components.push({
+        type: 'button',
+        sub_type: 'url',
+        index: '0',
+        parameters: [
+          {
+            type: 'text',
+            text: variables.reportLink
+          }
+        ]
+      });
+    }
+
+    const META_TEMPLATE_MAP = {
+      'report_ready_paid': 'report_ready'
+    };
+
+    const metaTemplateName = META_TEMPLATE_MAP[templateName] || templateName;
+
     const payload = {
       messaging_product: 'whatsapp',
       to: phone,
       type: 'template',
       template: {
-        name: templateName,
+        name: metaTemplateName,
         language: {
           code: 'en_US'
         },
-        components: [
-          {
-            type: 'body',
-            parameters
-          }
-        ]
+        components
       }
     };
 
     const callMetaApi = async () => {
       const response = await axios.post(
-        `https://graph.facebook.com/v18.0/${config.META_WHATSAPP_PHONE_NUMBER_ID}/messages`,
+        `https://graph.facebook.com/v18.0/1224793290709468/messages`,
         payload,
         {
           headers: {
@@ -290,7 +312,7 @@ export const WhatsAppService = {
 
     const callMetaApi = async () => {
       const response = await axios.post(
-        `https://graph.facebook.com/v18.0/${config.META_WHATSAPP_PHONE_NUMBER_ID}/messages`,
+        `https://graph.facebook.com/v18.0/1224793290709468/messages`,
         payload,
         {
           headers: {
